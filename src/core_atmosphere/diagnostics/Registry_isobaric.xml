@@ -16,11 +16,17 @@
         <var name="mslp" type="real" dimensions="nCells Time" units="Pa"
              description="Mean sea-level pressure"/>
 
+        <var name="height_1000hPa" type="real" dimensions="nCells Time" units="m"
+             description="Geometric height estimated for 1000 hPa"/>
+
         <var name="temperature_200hPa" type="real" dimensions="nCells Time" units="K"
              description="Temperature vertically interpolated to 200 hPa"/>
 
         <var name="temperature_250hPa" type="real" dimensions="nCells Time" units="K"
              description="Temperature vertically interpolated to 250 hPa"/>
+
+        <var name="temperature_300hPa" type="real" dimensions="nCells Time" units="K"
+             description="Temperature vertically interpolated to 300 hPa"/>
 
         <var name="temperature_500hPa" type="real" dimensions="nCells Time" units="K"
              description="Temperature vertically interpolated to 500 hPa"/>
@@ -40,6 +46,9 @@
         <var name="relhum_250hPa" type="real" dimensions="nCells Time" units="percent"
              description="Relative humidity vertically interpolated to 250 hPa"/>
 
+        <var name="relhum_300hPa" type="real" dimensions="nCells Time" units="percent"
+             description="Relative humidity vertically interpolated to 300 hPa"/>
+
         <var name="relhum_500hPa" type="real" dimensions="nCells Time" units="percent"
              description="Relative humidity vertically interpolated to 500 hPa"/>
 
@@ -57,6 +66,9 @@
 
         <var name="dewpoint_250hPa" type="real" dimensions="nCells Time" units="K"
              description="Dewpoint temperature vertically interpolated to 250 hPa"/>
+
+        <var name="dewpoint_300hPa" type="real" dimensions="nCells Time" units="K"
+             description="Dewpoint temperature vertically interpolated to 300 hPa"/>
 
         <var name="dewpoint_500hPa" type="real" dimensions="nCells Time" units="K"
              description="Dewpoint temperature vertically interpolated to 500 hPa"/>
@@ -76,6 +88,9 @@
         <var name="height_250hPa" type="real" dimensions="nCells Time" units="m"
              description="Geometric height interpolated to 250 hPa"/>
 
+        <var name="height_300hPa" type="real" dimensions="nCells Time" units="m"
+             description="Geometric height interpolated to 300 hPa"/>
+
         <var name="height_500hPa" type="real" dimensions="nCells Time" units="m"
              description="Geometric height interpolated to 500 hPa"/>
 
@@ -93,6 +108,9 @@
 
         <var name="uzonal_250hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
              description="Reconstructed zonal wind at cell centers, vertically interpolated to 250 hPa"/>
+
+        <var name="uzonal_300hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
+             description="Reconstructed zonal wind at cell centers, vertically interpolated to 300 hPa"/>
 
         <var name="uzonal_500hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
              description="Reconstructed zonal wind at cell centers, vertically interpolated to 500 hPa"/>
@@ -112,6 +130,9 @@
         <var name="umeridional_250hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
              description="Reconstructed meridional wind at cell centers, vertically interpolated to 250 hPa"/>
 
+        <var name="umeridional_300hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
+             description="Reconstructed meridional wind at cell centers, vertically interpolated to 300 hPa"/>
+
         <var name="umeridional_500hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
              description="Reconstructed meridional wind at cell centers, vertically interpolated to 500 hPa"/>
 
@@ -130,6 +151,9 @@
         <var name="w_250hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
              description="Vertical velocity vertically interpolated to 250 hPa"/>
 
+        <var name="w_300hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
+             description="Vertical velocity vertically interpolated to 300 hPa"/>
+
         <var name="w_500hPa" type="real" dimensions="nCells Time" units="m s^{-1}"
              description="Vertical velocity vertically interpolated to 500 hPa"/>
 
@@ -147,6 +171,9 @@
 
         <var name="vorticity_250hPa" type="real" dimensions="nVertices Time" units="s^{-1}"
              description="Relative vorticity vertically interpolated to 250 hPa"/>
+
+        <var name="vorticity_300hPa" type="real" dimensions="nVertices Time" units="s^{-1}"
+             description="Relative vorticity vertically interpolated to 300 hPa"/>
 
         <var name="vorticity_500hPa" type="real" dimensions="nVertices Time" units="s^{-1}"
              description="Relative vorticity vertically interpolated to 500 hPa"/>
