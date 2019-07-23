@@ -10,6 +10,7 @@
 !
 !
 module module_bl_ysu
+use mpas_log
 contains
 !
 !
@@ -110,7 +111,6 @@ contains
 !-- kte         end index for k in tile
 !-------------------------------------------------------------------------------
 !
-   integer,parameter ::  ndiff = 3
    real,parameter    ::  rcl = 1.0
 !
    integer,  intent(in   )   ::      ids,ide, jds,jde, kds,kde,                &
@@ -197,8 +197,6 @@ contains
                                                                        ctopo2
 !local
    integer ::  i,j,k
-   real,     dimension( its:ite, kts:kte*ndiff )  ::                 rqvbl2dt, &
-                                                                         qv2d
    real,     dimension( its:ite, kts:kte )  ::                            pdh
    real,     dimension( its:ite, kts:kte+1 )  ::                         pdhi
    real,     dimension( its:ite )  ::                                          &
@@ -206,9 +204,12 @@ contains
                                                                         dvsfc, &
                                                                         dtsfc, &
                                                                         dqsfc
+!local chemical species or passive tracers:
+   integer,  parameter :: nchem = 5
+   integer :: n
+   real,     dimension ( its:ite, kts:kte, jms:jme, nchem) ::           qchem
+   real,     dimension ( its:ite, kts:kte, jms:jme, nchem) ::      rchemblten
 
-!
-   qv2d(its:ite,:) = 0.0
 !
    do j = jts,jte
       do k = kts,kte+1
@@ -218,21 +219,26 @@ contains
         enddo
       enddo
 
-      do k = kts,kte
-        do i = its,ite
-          qv2d(i,k) = qv3d(i,k,j)
-          qv2d(i,k+kte) = qc3d(i,k,j)
-          if(present(rqiblten)) qv2d(i,k+kte+kte) = qi3d(i,k,j)
-        enddo
+      !temporary initialization of chemical species or passive tracers:
+      do i = its,ite
+         do k = kts,kte
+            do n = 1, nchem
+               qchem(i,k,j,n) = 1.
+               rchemblten(i,k,j,n) = 0.
+            enddo
+         enddo
       enddo
 !
       call ysu2d(J=j,ux=u3d(ims,kms,j),vx=v3d(ims,kms,j)                       &
               ,tx=t3d(ims,kms,j)                                               &
-              ,qx=qv2d(its,kts)                                                &
+              ,qvx=qv3d(ims,kms,j),qcx=qc3d(ims,kms,j),qix=qi3d(ims,kms,j)     &
+              ,nchem=nchem,qchemx=qchem(ims,kms,j,:)                           &
               ,p2d=pdh(its,kts),p2di=pdhi(its,kts)                             &
               ,pi2d=pi3d(ims,kms,j)                                            &
               ,utnp=rublten(ims,kms,j),vtnp=rvblten(ims,kms,j)                 &
-              ,ttnp=rthblten(ims,kms,j),qtnp=rqvbl2dt(its,kts),ndiff=ndiff     &
+              ,ttnp=rthblten(ims,kms,j),qvtnp=rqvblten(ims,kms,j)              &
+              ,qctnp=rqcblten(ims,kms,j),qitnp=rqiblten(ims,kms,j)             &
+              ,qchemtnp=rchemblten(ims,kms,j,:)                                &
               ,cp=cp,g=g,rovcp=rovcp,rd=rd,rovg=rovg                           &    
               ,xlv=xlv,rv=rv                                                   &
               ,ep1=ep1,ep2=ep2,karman=karman                                   &
@@ -261,20 +267,26 @@ contains
      do k = kts,kte
        do i = its,ite
          rthblten(i,k,j) = rthblten(i,k,j)/pi3d(i,k,j)
-         rqvblten(i,k,j) = rqvbl2dt(i,k)
-         rqcblten(i,k,j) = rqvbl2dt(i,k+kte)
-         if(present(rqiblten)) rqiblten(i,k,j) = rqvbl2dt(i,k+kte+kte)
        enddo
      enddo
 !
+   call mpas_log_write(' ')
+   call mpas_log_write('--- end subroutine ysu2d:')
+   do i = its,ite
+      do k = kts, kte
+         call mpas_log_write('$i $i $r $r $r $r',intArgs=(/i,k/), &
+            realArgs=(/rthblten(i,k,j),rqvblten(i,k,j),rqcblten(i,k,j),rqiblten(i,k,j)/))
+      enddo
+      call mpas_log_write(' ')
+   enddo
    enddo
 !
    end subroutine ysu
 !
 !-------------------------------------------------------------------------------
 !
-   subroutine ysu2d(j,ux,vx,tx,qx,p2d,p2di,pi2d,                               &
-                  utnp,vtnp,ttnp,qtnp,ndiff,                                   &
+   subroutine ysu2d(j,ux,vx,tx,qvx,qcx,qix,nchem,qchemx,p2d,p2di,pi2d,         &
+                  utnp,vtnp,ttnp,qvtnp,qctnp,qitnp,qchemtnp,                   &
                   cp,g,rovcp,rd,rovg,ep1,ep2,karman,xlv,rv,                    &
                   dz8w2d,psfcpa,                                               &
                   znt,ust,hpbl,psim,psih,                                      &
@@ -372,7 +384,7 @@ contains
    integer,  intent(in   )   ::     ids,ide, jds,jde, kds,kde,                 &
                                     ims,ime, jms,jme, kms,kme,                 &
                                     its,ite, jts,jte, kts,kte,                 &
-                                    j,ndiff
+                                    j
 
    integer,  intent(in)      ::     ysu_topdown_pblmix 
 !
@@ -386,16 +398,18 @@ contains
                                                                       p2diorg
 !
    real,     dimension( ims:ime, kms:kme )                                   , &
-             intent(in   )   ::                                            tx
-   real,     dimension( its:ite, kts:kte*ndiff )                             , &
-             intent(in   )   ::                                            qx
+             intent(in   )   ::                                            tx, &
+                                                                          qvx, &
+                                                                          qcx, &
+                                                                          qix
 !
    real,     dimension( ims:ime, kms:kme )                                   , &
              intent(inout)   ::                                          utnp, &
                                                                          vtnp, &
-                                                                         ttnp
-   real,     dimension( its:ite, kts:kte*ndiff )                             , &
-             intent(inout)   ::                                          qtnp
+                                                                         ttnp, &
+                                                                        qvtnp, &
+                                                                        qctnp, &
+                                                                        qitnp
 !
    real,     dimension( its:ite, kts:kte+1 )                                 , &
              intent(in   )   ::                                          p2di
@@ -489,7 +503,7 @@ contains
                                                                          zol1, &
                                                                     brcr_sbro
 !
-   real,    dimension( its:ite, kts:kte, ndiff)  ::                     r3,f3
+   real,    dimension( its:ite, kts:kte)     ::                         r3,f3
    integer, dimension( its:ite )             ::                  kpbl,kpblold
 !
    logical, dimension( its:ite )             ::                        pblflg, &
@@ -500,7 +514,7 @@ contains
    logical                                   ::                     definebrup
 !
    integer ::  n,i,k,l,ic,is,kk
-   integer ::  klpbl, ktrace1, ktrace2, ktrace3
+   integer ::  klpbl
 !
 !
    real    ::  dt2,rdt,spdk2,fm,fh,hol1,gamfac,vpert,prnum,prnum0
@@ -537,6 +551,12 @@ contains
                                                                      buoy_ysu
    real,    dimension( ims:ime )             ::                       pblh_ysu,&
                                                                       vconvfx
+!local chemical species or passive tracers:
+   integer, intent(in) :: nchem
+   real, intent(in), dimension( its:ite, kts:kte, nchem) ::                    &
+                                                                         qchemx
+   real, intent(inout), dimension( its:ite, kts:kte, nchem) ::                 &
+                                                                       qchemtnp
 !
 !-------------------------------------------------------------------------------
 !
@@ -550,26 +570,23 @@ contains
 !
 !  k-start index for tracer diffusion
 !
-   ktrace1 = 0
-   ktrace2 = 0 + kte
-   ktrace3 = 0 + kte*2
 !
    do k = kts,kte
      do i = its,ite
        thx(i,k) = tx(i,k)/pi2d(i,k)
-       thlix(i,k) = (tx(i,k)-xlv*qx(i,ktrace2+k)/cp-2.834E6*qx(i,ktrace3+k)/cp)/pi2d(i,k)
+       thlix(i,k) = (tx(i,k)-xlv*qcx(i,k)/cp-2.834E6*qix(i,k)/cp)/pi2d(i,k)
      enddo
    enddo
 !
    do k = kts,kte
      do i = its,ite
-       tvcon = (1.+ep1*qx(i,k))
+       tvcon = (1.+ep1*qvx(i,k))
        thvx(i,k) = thx(i,k)*tvcon
      enddo
    enddo
 !
    do i = its,ite
-     tvcon = (1.+ep1*qx(i,1))
+     tvcon = (1.+ep1*qvx(i,1))
      rhox(i) = psfcpa(i)/(rd*tx(i,1)*tvcon)
      govrth(i) = g/thx(i,1)
    enddo
@@ -584,7 +601,7 @@ contains
    do k = kts,kte
      do i = its,ite
        zq(i,k+1) = dz8w2d(i,k)+zq(i,k)
-       tvcon = (1.+ep1*qx(i,k))
+       tvcon = (1.+ep1*qvx(i,k))
        rhox2(i,k) = p2d(i,k)/(rd*tx(i,k)*tvcon)
      enddo
    enddo
@@ -613,7 +630,10 @@ contains
    utnp(its:ite,:) = 0.
    vtnp(its:ite,:) = 0.
    ttnp(its:ite,:) = 0.
-   qtnp(its:ite,:) = 0.
+   qvtnp(its:ite,:) = 0.
+   qctnp(its:ite,:) = 0.
+   qitnp(its:ite,:) = 0.
+   qchemtnp(its:ite,:,:) = 0.
 !
    do i = its,ite
      wspd1(i) = sqrt( (ux(i,1)-uox(i))*(ux(i,1)-uox(i)) + (vx(i,1)-vox(i))*(vx(i,1)-vox(i)) )+1.e-9
@@ -904,19 +924,19 @@ contains
        bfxpbl(i) = -0.15*thvx(i,1)/g*wm3/hpbl(i)
        dthvx(i)  = max(thvx(i,k+1)-thvx(i,k),tmin)
        we(i) = max(bfxpbl(i)/dthvx(i),-sqrt(wm2(i)))
-       if((qx(i,ktrace2+k)+qx(i,ktrace3+k)).gt.0.01e-3.and.ysu_topdown_pblmix.eq.1)then
+       if((qcx(i,k)+qix(i,k)).gt.0.01e-3.and.ysu_topdown_pblmix.eq.1)then
            if ( kpbl(i) .ge. 2) then
                 cloudflg(i)=.true. 
                 templ=thlix(i,k)*(p2di(i,k+1)/100000)**rovcp
                 !rvls is ws at full level
                 rvls=100.*6.112*EXP(17.67*(templ-273.16)/(templ-29.65))*(ep2/p2di(i,k+1))
-                temps=templ + ((qx(i,k)+qx(i,ktrace2+k))-rvls)/(cp/xlv  + &
+                temps=templ + ((qvx(i,k)+qcx(i,k))-rvls)/(cp/xlv  + &
                 ep2*xlv*rvls/(rd*templ**2))
                 rvls=100.*6.112*EXP(17.67*(temps-273.15)/(temps-29.65))*(ep2/p2di(i,k+1))
-                rcldb=max((qx(i,k)+qx(i,ktrace2+k))-rvls,0.)
+                rcldb=max((qvx(i,k)+qcx(i,k))-rvls,0.)
                 !entrainment efficiency
-                dthvx(i)  = (thlix(i,k+2)+thx(i,k+2)*ep1*(qx(i,k+2)+qx(i,ktrace2+k+2))) &
-                          - (thlix(i,k) + thx(i,k)  *ep1*(qx(i,k)  +qx(i,ktrace2+k)))
+                dthvx(i)  = (thlix(i,k+2)+thx(i,k+2)*ep1*(qvx(i,k+2)+qcx(i,k+2))) &
+                          - (thlix(i,k) + thx(i,k)  *ep1*(qvx(i,k)  +qcx(i,k)))
                 dthvx(i)  = max(dthvx(i),0.1)
                 tmp1      = xlv/cp * rcldb/(pi2d(i,k)*dthvx(i))
                 ent_eff   = 0.2 * 8. * tmp1 +0.2
@@ -967,7 +987,7 @@ contains
        endif
        prpbl(i) = 1.0
        dthx  = max(thx(i,k+1)-thx(i,k),tmin)
-       dqx   = min(qx(i,k+1)-qx(i,k),0.0)
+       dqx   = min(qvx(i,k+1)-qvx(i,k),0.0)
        hfxpbl(i) = we(i)*dthx
        qfxpbl(i) = we(i)*dqx
 !
@@ -1056,11 +1076,11 @@ contains
               /(dza(i,k+1)*dza(i,k+1))+1.e-9
          govrthv = g/(0.5*(thvx(i,k+1)+thvx(i,k)))
          ri = govrthv*(thvx(i,k+1)-thvx(i,k))/(ss*dza(i,k+1))
-         if(imvdif.eq.1.and.ndiff.ge.3)then
-           if((qx(i,ktrace2+k)+qx(i,ktrace3+k)).gt.0.01e-3.and.(qx(i           &
-             ,ktrace2+k+1)+qx(i,ktrace3+k+1)).gt.0.01e-3)then
+         if(imvdif.eq.1)then
+           if((qcx(i,k)+qix(i,k)).gt.0.01e-3.and. &
+              (qcx(i,k+1)+qix(i,k+1)).gt.0.01e-3)then
 !      in cloud
-             qmean = 0.5*(qx(i,k)+qx(i,k+1))
+             qmean = 0.5*(qvx(i,k)+qvx(i,k+1))
              tmean = 0.5*(tx(i,k)+tx(i,k+1))
              alph  = xlv*qmean/rd/tmean
              chi   = xlv*xlv*qmean/cp/rv/tmean/tmean
@@ -1163,128 +1183,159 @@ contains
      enddo
    enddo
 !
-!     compute tridiagonal matrix elements for moisture, clouds, and gases
-!
-   do k = kts,kte
-     do i = its,ite
-       au(i,k) = 0.
-       al(i,k) = 0.
-       ad(i,k) = 0.
-     enddo
-   enddo
-!
-   do ic = 1,ndiff
-     do i = its,ite
-       do k = kts,kte
-         f3(i,k,ic) = 0.
-       enddo
-     enddo
-   enddo
-!
+
+!--- compute tridiagonal matrix elements for water vapor, cloud water, and cloud ice:
+   !--- initialization of exchange coefficient:
    do i = its,ite
-     ad(i,1) = 1.
-     f3(i,1,1) = qx(i,1)+qfx(i)*g/del(i,1)*dt2
+      do k = kts,kte-1
+         if(k .ge. kpbl(i)) xkzq(i,k) = xkzh(i,k)
+      enddo
    enddo
-!
-   if(ndiff.ge.2) then
-     do ic = 2,ndiff
-       is = (ic-1) * kte
-       do i = its,ite
-         f3(i,1,ic) = qx(i,1+is)
-       enddo
-     enddo
-   endif
-!
-   do k = kts,kte-1
-     do i = its,ite
-       if(k.ge.kpbl(i)) then
-         xkzq(i,k) = xkzh(i,k)
-       endif
-     enddo
+
+   !--- water vapor:
+   do i = its,ite
+      do k = kts,kte
+         au(i,k) = 0.
+         al(i,k) = 0.
+         ad(i,k) = 0.
+         f1(i,k) = 0.
+         r1(i,k) = 0.
+      enddo
+
+      k = 1
+      ad(i,1) = 1.
+      f1(i,1) = qvx(i,1)+qfx(i)*g/del(i,1)*dt2
+
+      do k = kts,kte-1
+            dtodsd = dt2/del(i,k)
+            dtodsu = dt2/del(i,k+1)
+            dsig   = p2d(i,k)-p2d(i,k+1)
+            rdz    = 1./dza(i,k+1)
+            tem1   = dsig*xkzq(i,k)*rdz
+            if(pblflg(i).and.k.lt.kpbl(i)) then
+               dsdzq = tem1*(-qfxpbl(i)*zfacent(i,k)/xkzq(i,k))
+               f1(i,k) = f1(i,k)+dtodsd*dsdzq
+               f1(i,k+1) = qvx(i,k+1)-dtodsu*dsdzq
+            elseif(pblflg(i).and.k.ge.kpbl(i).and.entfac(i,k).lt.4.6) then
+               xkzq(i,k) = -we(i)*dza(i,kpbl(i))*exp(-entfac(i,k))
+               xkzq(i,k) = sqrt(xkzq(i,k)*xkzhl(i,k))
+               xkzq(i,k) = max(xkzq(i,k),xkzoh(i,k))
+               xkzq(i,k) = min(xkzq(i,k),xkzmax)
+               f1(i,k+1) = qvx(i,k+1)
+            else
+               f1(i,k+1) = qvx(i,k+1)
+            endif
+            tem1      = dsig*xkzq(i,k)*rdz
+            dsdz2     = tem1*rdz
+            au(i,k)   = -dtodsd*dsdz2
+            al(i,k)   = -dtodsu*dsdz2
+            ad(i,k)   = ad(i,k)-au(i,k)
+            ad(i,k+1) = 1.-al(i,k)
+      enddo
+
+      do k = kts,kte
+         cu(i,k) = au(i,k)
+         r1(i,k) = f1(i,k)
+      enddo
    enddo
-!
-   do k = kts,kte-1
-     do i = its,ite
-       dtodsd = dt2/del(i,k)
-       dtodsu = dt2/del(i,k+1)
-       dsig   = p2d(i,k)-p2d(i,k+1)
-       rdz    = 1./dza(i,k+1)
-       tem1   = dsig*xkzq(i,k)*rdz
-       if(pblflg(i).and.k.lt.kpbl(i)) then
-         dsdzq = tem1*(-qfxpbl(i)*zfacent(i,k)/xkzq(i,k))
-         f3(i,k,1) = f3(i,k,1)+dtodsd*dsdzq
-         f3(i,k+1,1) = qx(i,k+1)-dtodsu*dsdzq
-       elseif(pblflg(i).and.k.ge.kpbl(i).and.entfac(i,k).lt.4.6) then
-         xkzq(i,k) = -we(i)*dza(i,kpbl(i))*exp(-entfac(i,k))
-         xkzq(i,k) = sqrt(xkzq(i,k)*xkzhl(i,k))
-         xkzq(i,k) = max(xkzq(i,k),xkzoh(i,k))
-         xkzq(i,k) = min(xkzq(i,k),xkzmax)
-         f3(i,k+1,1) = qx(i,k+1)
-       else
-         f3(i,k+1,1) = qx(i,k+1)
-       endif
-       tem1   = dsig*xkzq(i,k)*rdz
-       dsdz2     = tem1*rdz
-       au(i,k)   = -dtodsd*dsdz2
-       al(i,k)   = -dtodsu*dsdz2
-       ad(i,k)   = ad(i,k)-au(i,k)
-       ad(i,k+1) = 1.-al(i,k)
-!      exch_hx(i,k+1) = xkzh(i,k)
-     enddo
+   call tridin_ysu(al,ad,cu,r1,au,f1,its,ite,kts,kte,1)
+
+   do i = its,ite
+      do k = kte,kts,-1
+         qtend = (f1(i,k)-qvx(i,k))*rdt
+         qvtnp(i,k) = qvtnp(i,k)+qtend
+         dqsfc(i)   = dqsfc(i)+qtend*conq*del(i,k)
+      enddo
    enddo
-!
-   if(ndiff.ge.2) then
-     do ic = 2,ndiff
-       is = (ic-1) * kte
-       do k = kts,kte-1
-         do i = its,ite
-           f3(i,k+1,ic) = qx(i,k+1+is)
-         enddo
-       enddo
-     enddo
-   endif
-!
-! copies here to avoid duplicate input args for tridin
-!
-   do k = kts,kte
-     do i = its,ite
-       cu(i,k) = au(i,k)
-     enddo
+
+   !--- cloud water:
+   do i = its,ite
+      do k = kts,kte
+         au(i,k) = 0.
+         al(i,k) = 0.
+         ad(i,k) = 0.
+         f1(i,k) = 0.
+         r1(i,k) = 0.
+      enddo
+
+      k = 1
+      ad(i,1) = 1.
+      f1(i,1) = qcx(i,1)
+
+      do k = kts,kte-1
+            dtodsd = dt2/del(i,k)
+            dtodsu = dt2/del(i,k+1)
+            dsig   = p2d(i,k)-p2d(i,k+1)
+            rdz    = 1./dza(i,k+1)
+            tem1   = dsig*xkzq(i,k)*rdz
+
+            dsdz2     = tem1*rdz
+            au(i,k)   = -dtodsd*dsdz2
+            al(i,k)   = -dtodsu*dsdz2
+            ad(i,k)   = ad(i,k)-au(i,k)
+            ad(i,k+1) = 1.-al(i,k)
+            f1(i,k+1) = qcx(i,k+1)
+      enddo
+      do k = kts,kte
+         cu(i,k) = au(i,k)
+         r1(i,k) = f1(i,k)
+      enddo
    enddo
-!
-   do ic = 1,ndiff
-     do k = kts,kte
-       do i = its,ite
-         r3(i,k,ic) = f3(i,k,ic)
-       enddo
-     enddo
+   call tridin_ysu(al,ad,cu,r1,au,f1,its,ite,kts,kte,1)
+
+   do i = its,ite
+      do k = kte,kts,-1
+         qtend = (f1(i,k)-qcx(i,k))*rdt
+         qctnp(i,k) = qctnp(i,k)+qtend
+      enddo
    enddo
-!
-!     solve tridiagonal problem for moisture, clouds, and gases
-!
-   call tridin_ysu(al,ad,cu,r3,au,f3,its,ite,kts,kte,ndiff)
-!
-!     recover tendencies of heat and moisture
-!
-   do k = kte,kts,-1
-     do i = its,ite
-       qtend = (f3(i,k,1)-qx(i,k))*rdt
-       qtnp(i,k) = qtnp(i,k)+qtend
-       dqsfc(i) = dqsfc(i)+qtend*conq*del(i,k)
-     enddo
+
+   !--- cloud ice:
+   do i = its,ite
+      do k = kts,kte
+         au(i,k) = 0.
+         al(i,k) = 0.
+         ad(i,k) = 0.
+         f1(i,k) = 0.
+         r1(i,k) = 0.
+      enddo
+
+      k = 1
+      ad(i,1) = 1.
+      f1(i,1) = qix(i,1)
+
+      do k = kts,kte-1
+            dtodsd = dt2/del(i,k)
+            dtodsu = dt2/del(i,k+1)
+            dsig   = p2d(i,k)-p2d(i,k+1)
+            rdz    = 1./dza(i,k+1)
+            tem1   = dsig*xkzq(i,k)*rdz
+
+            dsdz2     = tem1*rdz
+            au(i,k)   = -dtodsd*dsdz2
+            al(i,k)   = -dtodsu*dsdz2
+            ad(i,k)   = ad(i,k)-au(i,k)
+            ad(i,k+1) = 1.-al(i,k)
+            f1(i,k+1) = qix(i,k+1)
+      enddo
+      do k = kts,kte
+         cu(i,k) = au(i,k)
+         r1(i,k) = f1(i,k)
+      enddo
    enddo
-!
-   if(ndiff.ge.2) then
-     do ic = 2,ndiff
-       is = (ic-1) * kte
-       do k = kte,kts,-1
-         do i = its,ite
-           qtend = (f3(i,k,ic)-qx(i,k+is))*rdt
-           qtnp(i,k+is) = qtnp(i,k+is)+qtend
-         enddo
-       enddo
-     enddo
-   endif
+   call tridin_ysu(al,ad,cu,r1,au,f1,its,ite,kts,kte,1)
+
+   do i = its,ite
+      do k = kte,kts,-1
+         qtend = (f1(i,k)-qix(i,k))*rdt
+         qitnp(i,k) = qitnp(i,k)+qtend
+      enddo
+   enddo
+
+   !--- chemical species or passive tracers:
+   
+
+
 !
 !     compute tridiagonal matrix elements for momentum
 !
