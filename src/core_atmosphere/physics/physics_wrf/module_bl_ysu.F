@@ -11,7 +11,18 @@
 !   of number concentrations, aerosols, chemical species and/or passive tracers for use in subroutine ysu2d. for
 !   now these arrays are simple place holders.
 !   Laura D. Fowler (laura@ucar.edu) / 2019-07-25.
-
+! * in subroutine ysu2d, cleaned up the calculation of the k-coefficients for water vapor,cloud water,cloud ice,
+!   and chemical species/passive tracers. Because all water species,and chemical tracers/passive tracers share
+!   the same k-coefficients,many of the input arrays (with the exception of r1 and f1) do not need to be computed
+!   over and over. this required to clean up the subroutine tridin_ysu so that some of those arrays (like au) are
+!   not overwritten.
+!   Laura D. Fowler (laura@ucar.edu) / 2019-08-02.
+! * in subroutine ysu2d, added the initialization of local and output k-coefficients.
+!   Laura D. Fowler (laura@ucar.edu) / 2019-08-02.
+! * in subroutine ysu2d, modified the call to subroutine get_pblh. on cheyenne with the -g option, intel compilers
+!   create temporary arrays that lead MPAS to run extremely slow. This is remedied by first copying a few of the
+!   targeted arrays to dummy kts:kte arrays prior to the call to get_pblh.
+!   Laura D. Fowler (laura@ucar.edu) / 2019-08-03.
 
 !=================================================================================================================
 !WRF:model_layer:physics
@@ -296,15 +307,15 @@ contains
        enddo
      enddo
 !
-   call mpas_log_write(' ')
-   call mpas_log_write('--- end subroutine ysu2d:')
-   do i = its,ite
-      do k = kts, kte
-         call mpas_log_write('$i $i $r $r $r $r',intArgs=(/i,k/), &
-            realArgs=(/rthblten(i,k,j),rqvblten(i,k,j),rqcblten(i,k,j),rqiblten(i,k,j)/))
-      enddo
-      call mpas_log_write(' ')
-   enddo
+!  call mpas_log_write(' ')
+!  call mpas_log_write('--- end subroutine ysu2d:')
+!  do i = its,ite
+!     do k = kts, kte
+!        call mpas_log_write('$i $i $r $r $r $r $r $r',intArgs=(/i,k/),realArgs=(/rthblten(i,k,j), &
+!                  rqvblten(i,k,j),rqcblten(i,k,j),rqiblten(i,k,j),rublten(i,k,j),rvblten(i,k,j)/))
+!     enddo
+!     call mpas_log_write(' ')
+!  enddo
 !  do i = its,ite
 !     do k = kts,kte
 !        call mpas_log_write('$i $i $r $r $r $r $r $r $r $r $r $r',intArgs=(/i,k/), &
@@ -519,13 +530,12 @@ contains
                                                                         prpbl, &
                                                               wspd1,thermalli
 !
-   real,    dimension( its:ite, kts:kte )    ::                     xkzm,xkzh, &
+   real,    dimension( its:ite, kts:kte )    ::                xkzh,xkzm,xkzq, &
                                                                         f1,f2, &
                                                                         r1,r2, &
                                                                         ad,au, &
                                                                            cu, &
                                                                            al, &
-                                                                         xkzq, &
                                                                          zfac, &
                                                                         rhox2, &
                                                                        hgamt2
@@ -598,6 +608,9 @@ contains
                                                                      buoy_ysu
    real,    dimension( ims:ime )             ::                       pblh_ysu,&
                                                                       vconvfx
+
+   real,     dimension( kts:kte )   :: dummy1,dummy2,dummy4
+   real,     dimension( kts:kte+1 ) :: dummy3
 !
 !-------------------------------------------------------------------------------
 !
@@ -687,7 +700,20 @@ contains
    ttnp(its:ite,:) = 0.
    qvtnp(its:ite,:) = 0.
    qctnp(its:ite,:) = 0.
-
+!
+!-----initialize output and local exchange coefficents:
+   do k = kts,kte
+     do i = its,ite
+       exch_hx(i,k) = 0.
+       exch_mx(i,k) = 0.
+       xkzh(i,k)    = 0.
+       xkzhl(i,k)   = 0.
+       xkzm(i,k)    = 0.
+       xkzml(i,k)   = 0.
+       xkzq(i,k)    = 0.
+     enddo
+   enddo
+!
    do i = its,ite
      wspd1(i) = sqrt( (ux(i,1)-uox(i))*(ux(i,1)-uox(i)) + (vx(i,1)-vox(i))*(vx(i,1)-vox(i)) )+1.e-9
    enddo
@@ -1238,7 +1264,7 @@ contains
 !
 
 !--- compute tridiagonal matrix elements for water vapor, cloud water, and cloud ice:
-   !--- initialization of exchange coefficient:
+   !--- initialization of k-coefficient above the PBL.
    do i = its,ite
       do k = kts,kte-1
          if(k .ge. kpbl(i)) xkzq(i,k) = xkzh(i,k)
@@ -1304,34 +1330,7 @@ contains
    !--- cloud water:
    do i = its,ite
       do k = kts,kte
-         au(i,k) = 0.
-         al(i,k) = 0.
-         ad(i,k) = 0.
-         f1(i,k) = 0.
-         r1(i,k) = 0.
-      enddo
-
-      k = 1
-      ad(i,1) = 1.
-      f1(i,1) = qcx(i,1)
-
-      do k = kts,kte-1
-         dtodsd = dt2/del(i,k)
-         dtodsu = dt2/del(i,k+1)
-         dsig   = p2d(i,k)-p2d(i,k+1)
-         rdz    = 1./dza(i,k+1)
-         tem1   = dsig*xkzq(i,k)*rdz
-
-         dsdz2     = tem1*rdz
-         au(i,k)   = -dtodsd*dsdz2
-         al(i,k)   = -dtodsu*dsdz2
-         ad(i,k)   = ad(i,k)-au(i,k)
-         ad(i,k+1) = 1.-al(i,k)
-         f1(i,k+1) = qcx(i,k+1)
-      enddo
-
-      do k = kts,kte
-         cu(i,k) = au(i,k)
+         f1(i,k) = qcx(i,k)
          r1(i,k) = f1(i,k)
       enddo
    enddo
@@ -1348,34 +1347,7 @@ contains
    if(present(qix) .and. present(qitnp)) then
       do i = its,ite
          do k = kts,kte
-            au(i,k) = 0.
-            al(i,k) = 0.
-            ad(i,k) = 0.
-            f1(i,k) = 0.
-            r1(i,k) = 0.
-         enddo
-
-         k = 1
-         ad(i,1) = 1.
-         f1(i,1) = qixl(i,1)
-
-         do k = kts,kte-1
-            dtodsd = dt2/del(i,k)
-            dtodsu = dt2/del(i,k+1)
-            dsig   = p2d(i,k)-p2d(i,k+1)
-            rdz    = 1./dza(i,k+1)
-            tem1   = dsig*xkzq(i,k)*rdz
-
-            dsdz2     = tem1*rdz
-            au(i,k)   = -dtodsd*dsdz2
-            al(i,k)   = -dtodsu*dsdz2
-            ad(i,k)   = ad(i,k)-au(i,k)
-            ad(i,k+1) = 1.-al(i,k)
-            f1(i,k+1) = qixl(i,k+1)
-         enddo
-
-         do k = kts,kte
-            cu(i,k) = au(i,k)
+            f1(i,k) = qixl(i,k)
             r1(i,k) = f1(i,k)
          enddo
       enddo
@@ -1392,37 +1364,10 @@ contains
    !--- chemical species and/or passive tracers, meaning all variables that we want to
    !    be vertically-mixed:
    if(present(qmix) .and. present(qmixtnp) .and. nmix > 0) then
-      do n = 1, nmix
+      Do n = 1, nmix
          do i = its,ite
             do k = kts,kte
-               au(i,k) = 0.
-               al(i,k) = 0.
-               ad(i,k) = 0.
-               f1(i,k) = 0.
-               r1(i,k) = 0.
-            enddo
-
-            k = 1
-            ad(i,1) = 1.
-            f1(i,1) = qmix(i,1,n)
-
-            do k = kts,kte-1
-               dtodsd = dt2/del(i,k)
-               dtodsu = dt2/del(i,k+1)
-               dsig   = p2d(i,k)-p2d(i,k+1)
-               rdz    = 1./dza(i,k+1)
-               tem1   = dsig*xkzq(i,k)*rdz
-
-               dsdz2     = tem1*rdz
-               au(i,k)   = -dtodsd*dsdz2
-               al(i,k)   = -dtodsu*dsdz2
-               ad(i,k)   = ad(i,k)-au(i,k)
-               ad(i,k+1) = 1.-al(i,k)
-               f1(i,k+1) = qmix(i,k+1,n)
-            enddo
-
-            do k = kts,kte
-               cu(i,k) = au(i,k)
+               f1(i,k) = qmix(i,k,n)
                r1(i,k) = f1(i,k)
             enddo
          enddo
@@ -1436,6 +1381,7 @@ contains
          enddo
       enddo
    endif
+
 !
 !     compute tridiagonal matrix elements for momentum
 !
@@ -1477,8 +1423,16 @@ contains
       enddo
  !Hybrid pblh of MYNN
  !tke is q2
-      CALL GET_PBLH(KTS,KTE,pblh_ysu(i),thvx(i,kts:kte),&
-      &    tke_ysu(i,kts:kte),zq(i,kts:kte+1),dzq(i,kts:kte),xland(i))
+!     CALL GET_PBLH(KTS,KTE,pblh_ysu(i),thvx(i,kts:kte),&
+!     &    tke_ysu(i,kts:kte),zq(i,kts:kte+1),dzq(i,kts:kte),xland(i))
+      do k = kts,kte
+         dummy1(k) = thvx(i,k)
+         dummy2(k) = tke_ysu(i,k)
+         dummy3(k) = zq(i,k)
+         dummy4(k) = dzq(i,k)
+      enddo
+      dummy3(kte+1) = zq(i,kte+1)
+      call get_pblh(kts,kte,pblh_ysu(i),dummy1,dummy2,dummy3,dummy4,xland(i))
 
 !--- end of paj tke
 ! compute vconv
@@ -1690,17 +1644,17 @@ contains
          intent(in   )  ::                                                 cl
 !
    real, dimension( its:ite, kts:kte )                                       , &
-         intent(in   )  ::                                                 cm
+         intent(in   )  ::                                                 au, &
+                                                                           cm, &
+                                                                           cu
    real, dimension( its:ite, kts:kte,nt )                                    , &
          intent(in   )  ::                                                 r2
-!
-   real, dimension( its:ite, kts:kte )                                       , &
-         intent(inout)  ::                                                 au, &
-                                                                           cu
+
    real, dimension( its:ite, kts:kte,nt )                                    , &
          intent(inout)  ::                                                 f2
 !
    real    :: fk
+   real, dimension( its:ite, kts:kte ) ::                                 aul
    integer :: i,k,l,n,it
 !
 !-------------------------------------------------------------------------------
@@ -1708,10 +1662,16 @@ contains
    l = ite
    n = kte
 !
+   do  i = its,ite
+     do k = kts,kte
+       aul(i,k) = 0.
+     enddo
+   enddo
+!
    do it = 1,nt
      do i = its,l
        fk = 1./cm(i,1)
-       au(i,1) = fk*cu(i,1)
+       aul(i,1) = fk*cu(i,1)
        f2(i,1,it) = fk*r2(i,1,it)
      enddo
    enddo
@@ -1719,8 +1679,8 @@ contains
    do it = 1,nt
      do k = kts+1,n-1
        do i = its,l
-         fk = 1./(cm(i,k)-cl(i,k)*au(i,k-1))
-         au(i,k) = fk*cu(i,k)
+         fk = 1./(cm(i,k)-cl(i,k)*aul(i,k-1))
+         aul(i,k) = fk*cu(i,k)
          f2(i,k,it) = fk*(r2(i,k,it)-cl(i,k)*f2(i,k-1,it))
        enddo
      enddo
@@ -1728,7 +1688,7 @@ contains
 !
    do it = 1,nt
      do i = its,l
-       fk = 1./(cm(i,n)-cl(i,n)*au(i,n-1))
+       fk = 1./(cm(i,n)-cl(i,n)*aul(i,n-1))
        f2(i,n,it) = fk*(r2(i,n,it)-cl(i,n)*f2(i,n-1,it))
      enddo
    enddo
@@ -1736,7 +1696,7 @@ contains
    do it = 1,nt
      do k = n-1,kts,-1
        do i = its,l
-         f2(i,k,it) = f2(i,k,it)-au(i,k)*f2(i,k+1,it)
+         f2(i,k,it) = f2(i,k,it)-aul(i,k)*f2(i,k+1,it)
        enddo
      enddo
    enddo
