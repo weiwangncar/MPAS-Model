@@ -69,6 +69,8 @@
 ! * after updating module_bl_ysu.F to WRF version 4.0.3, corrected call to subroutine ysu to output diagnostics of
 !   exchange coefficients exch_h and exch_m.
 !   Laura D. Fowler (laura@ucar.edu) / 2019-03-12.
+! * remove unnecessary "regime" field from YSU call
+!   Dave Gill (gill@ucar.edu) / 2019-08-05.
 
 
  contains
@@ -124,7 +126,6 @@
        if(.not.allocated(ctopo2_p)) allocate(ctopo2_p(ims:ime,jms:jme)      )
        if(.not.allocated(psih_p)  ) allocate(psih_p(ims:ime,jms:jme)        )
        if(.not.allocated(psim_p)  ) allocate(psim_p(ims:ime,jms:jme)        )
-       if(.not.allocated(regime_p)) allocate(regime_p(ims:ime,jms:jme)      )
        if(.not.allocated(u10_p)   ) allocate(u10_p(ims:ime,jms:jme)         )
        if(.not.allocated(v10_p)   ) allocate(v10_p(ims:ime,jms:jme)         )
        if(.not.allocated(exch_p)  ) allocate(exch_p(ims:ime,kms:kme,jms:jme))
@@ -212,7 +213,6 @@
        if(allocated(ctopo2_p)) deallocate(ctopo2_p)
        if(allocated(psih_p)  ) deallocate(psih_p  )
        if(allocated(psim_p)  ) deallocate(psim_p  )
-       if(allocated(regime_p)) deallocate(regime_p)
        if(allocated(u10_p)   ) deallocate(u10_p   )
        if(allocated(v10_p)   ) deallocate(v10_p   )
        if(allocated(exch_p)  ) deallocate(exch_p  )
@@ -341,7 +341,6 @@
           br_p(i,j)     = br(i)
           psim_p(i,j)   = fm(i)
           psih_p(i,j)   = fh(i)
-          regime_p(i,j) = regime(i)
           u10_p(i,j)    = u10(i)
           v10_p(i,j)    = v10(i)
           !initialization for YSU PBL scheme:
@@ -633,7 +632,7 @@
                  exch_m   = kzm_p      , wstar    = wstar_p     , delta    = delta_p    , &
                  uoce     = uoce_p     , voce     = voce_p      , rthraten = rthraten_p , &
                  u10      = u10_p      , v10      = v10_p       , ctopo    = ctopo_p    , &
-                 ctopo2   = ctopo2_p   , regime   = regime_p    ,                         &
+                 ctopo2   = ctopo2_p   ,                                                  &
                  ysu_topdown_pblmix = ysu_pblmix ,                                        &
                  ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde  , &
                  ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme  , &

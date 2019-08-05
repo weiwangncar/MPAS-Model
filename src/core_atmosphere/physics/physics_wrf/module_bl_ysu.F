@@ -56,9 +56,7 @@ contains
                   ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
                   ims,ime, jms,jme, kms,kme,                                   &
-                  its,ite, jts,jte, kts,kte,                                   &
-                !optional
-                  regime                                                       &
+                  its,ite, jts,jte, kts,kte                                    &
                  )
 !-------------------------------------------------------------------------------
    implicit none
@@ -205,12 +203,6 @@ contains
              intent(out  )   ::                                        kpbl2d
    logical,  intent(in)      ::                                       flag_qi
 !
-!optional
-!
-   real,     dimension( ims:ime, jms:jme )                                   , &
-             optional                                                        , &
-             intent(inout)   ::                                        regime
-!
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
              optional                                                        , &
              intent(inout)   ::                                       rqiblten
@@ -282,7 +274,7 @@ contains
               ,dz8w2d=dz8w(ims,kms,j)                                          &
               ,psfcpa=psfc(ims,j),znt=znt(ims,j),ust=ust(ims,j)                &
               ,hpbl=hpbl(ims,j)                                                &
-              ,regime=regime(ims,j),psim=psim(ims,j)                           &
+              ,psim=psim(ims,j)                                                &
               ,psih=psih(ims,j),xland=xland(ims,j)                             &
               ,hfx=hfx(ims,j),qfx=qfx(ims,j)                                   &
               ,wspd=wspd(ims,j),br=br(ims,j)                                   &
@@ -346,9 +338,7 @@ contains
                   ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
                   ims,ime, jms,jme, kms,kme,                                   &
-                  its,ite, jts,jte, kts,kte,                                   &
-                !optional
-                  regime                                                       &
+                  its,ite, jts,jte, kts,kte                                    &
                    )
 !-------------------------------------------------------------------------------
    implicit none
@@ -499,9 +489,6 @@ contains
              optional                                                        , &
              intent(in   )   ::                                         ctopo, &
                                                                        ctopo2
-   real,     dimension( ims:ime )                                            , &
-             optional                                                        , &
-             intent(inout)   ::                                        regime
 !
 ! local vars
 !
