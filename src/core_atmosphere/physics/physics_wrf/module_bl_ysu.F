@@ -284,7 +284,7 @@ contains
               ,delta=delta(ims,j)                                              &
               ,u10=u10(ims,j),v10=v10(ims,j)                                   &
               ,uox=uoce(ims,j),vox=voce(ims,j)                                 &
-              ,rthraten=rthraten(ims,kms,j),p2diORG=p3di(ims,kms,j)            &
+              ,rthraten=rthraten(ims,kms,j)                                    &
               ,ysu_topdown_pblmix=ysu_topdown_pblmix                           &
               ,ctopo=ctopo(ims,j),ctopo2=ctopo2(ims,j)                         &
               ,ids=ids,ide=ide, jds=jds,jde=jde, kds=kds,kde=kde               &
@@ -331,7 +331,7 @@ contains
                   wstar,delta,                                                 &
                   u10,v10,                                                     &
                   uox,vox,                                                     &
-                  rthraten,p2diORG,                                            &
+                  rthraten,                                                    &
                   ysu_topdown_pblmix,                                          &
                   ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
@@ -428,8 +428,7 @@ contains
 !
    real,     dimension( ims:ime, kms:kme ),                                    &
              intent(in)      ::                                        dz8w2d, &
-                                                                         pi2d, &
-                                                                      p2diorg
+                                                                         pi2d
 !
    real,     dimension( ims:ime, kms:kme )                                   , &
              intent(in   )   ::                                            tx, &
@@ -1008,7 +1007,7 @@ contains
                 radsum=0.
                 do kk = 1,kpbl(i)-1
                    radflux=rthraten(i,kk)*pi2d(i,kk) !converts theta/s to temp/s
-                   radflux=radflux*cp/g*(p2diORG(i,kk)-p2diORG(i,kk+1)) ! converts temp/s to W/m^2
+                   radflux=radflux*cp/g*(p2di(i,kk)-p2di(i,kk+1)) ! converts temp/s to W/m^2
                    if (radflux < 0.0 ) radsum=abs(radflux)+radsum
                 enddo
                 radsum=max(radsum,0.0)
