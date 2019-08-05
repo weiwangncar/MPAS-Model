@@ -213,7 +213,6 @@ contains
                                                                        ctopo2
 !local
    integer ::  i,j,k
-   real,     dimension( its:ite, kts:kte+1 )  ::                         pdhi
    real,     dimension( its:ite )  ::                                          &
                                                                         dusfc, &
                                                                         dvsfc, &
@@ -250,17 +249,12 @@ contains
  enddo
 !
    do j = jts,jte
-      do k = kts,kte+1
-        do i = its,ite
-          pdhi(i,k) = p3di(i,k,j)
-        enddo
-      enddo
 !
       call ysu2d(J=j,ux=u3d(ims,kms,j),vx=v3d(ims,kms,j)                       &
               ,tx=t3d(ims,kms,j)                                               &
               ,qvx=qv3d(ims,kms,j),qcx=qc3d(ims,kms,j),qix=qi3d(ims,kms,j)     &
               ,nmix=nmix,qmix=qmix(ims,kms,j,1)                                &
-              ,p2d=p3d(ims,kms,j),p2di=pdhi(its,kts)                           &
+              ,p2d=p3d(ims,kms,j),p2di=p3di(ims,kms,j)                         &
               ,pi2d=pi3d(ims,kms,j)                                            &
               ,utnp=rublten(ims,kms,j),vtnp=rvblten(ims,kms,j)                 &
               ,ttnp=rthblten(ims,kms,j),qvtnp=rqvblten(ims,kms,j)              &
@@ -454,7 +448,7 @@ contains
    real,     dimension( ims:ime, kms:kme, nmix )                             , &
              intent(inout), optional   ::                             qmixtnp
 !
-   real,     dimension( its:ite, kts:kte+1 )                                 , &
+   real,     dimension( ims:ime, kms:kme )                                   , &
              intent(in   )   ::                                          p2di
 !
    real,     dimension( ims:ime, kms:kme )                                   , &
