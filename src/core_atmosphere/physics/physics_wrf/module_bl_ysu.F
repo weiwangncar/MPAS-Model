@@ -213,7 +213,6 @@ contains
                                                                        ctopo2
 !local
    integer ::  i,j,k
-   real,     dimension( its:ite, kts:kte )  ::                            pdh
    real,     dimension( its:ite, kts:kte+1 )  ::                         pdhi
    real,     dimension( its:ite )  ::                                          &
                                                                         dusfc, &
@@ -253,7 +252,6 @@ contains
    do j = jts,jte
       do k = kts,kte+1
         do i = its,ite
-          if(k.le.kte)pdh(i,k) = p3d(i,k,j)
           pdhi(i,k) = p3di(i,k,j)
         enddo
       enddo
@@ -262,7 +260,7 @@ contains
               ,tx=t3d(ims,kms,j)                                               &
               ,qvx=qv3d(ims,kms,j),qcx=qc3d(ims,kms,j),qix=qi3d(ims,kms,j)     &
               ,nmix=nmix,qmix=qmix(ims,kms,j,1)                                &
-              ,p2d=pdh(its,kts),p2di=pdhi(its,kts)                             &
+              ,p2d=p3d(ims,kms,j),p2di=pdhi(its,kts)                           &
               ,pi2d=pi3d(ims,kms,j)                                            &
               ,utnp=rublten(ims,kms,j),vtnp=rvblten(ims,kms,j)                 &
               ,ttnp=rthblten(ims,kms,j),qvtnp=rqvblten(ims,kms,j)              &
@@ -460,7 +458,7 @@ contains
    real,     dimension( its:ite, kts:kte+1 )                                 , &
              intent(in   )   ::                                          p2di
 !
-   real,     dimension( its:ite, kts:kte )                                   , &
+   real,     dimension( ims:ime, kms:kme )                                   , &
              intent(in   )   ::                                           p2d
 !
    real,     dimension( ims:ime )                                            , &
