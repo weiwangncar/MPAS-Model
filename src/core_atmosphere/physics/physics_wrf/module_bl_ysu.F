@@ -213,11 +213,7 @@ contains
                                                                        ctopo2
 !local
    integer ::  i,j,k
-   real,     dimension( its:ite )  ::                                          &
-                                                                        dusfc, &
-                                                                        dvsfc, &
-                                                                        dtsfc, &
-                                                                        dqsfc
+
 !temporary allocation of local chemical species and/or passive tracers that are vertically-
 !mixed in subroutine ysu2d:
    integer,  parameter :: nmix = 5
@@ -270,7 +266,6 @@ contains
               ,psih=psih(ims,j),xland=xland(ims,j)                             &
               ,hfx=hfx(ims,j),qfx=qfx(ims,j)                                   &
               ,wspd=wspd(ims,j),br=br(ims,j)                                   &
-              ,dusfc=dusfc,dvsfc=dvsfc,dtsfc=dtsfc,dqsfc=dqsfc                 &
               ,dt=dt,rcl=1.0,kpbl1d=kpbl2d(ims,j)                              &
               ,exch_hx=exch_h(ims,kms,j)                                       &
               ,exch_mx=exch_m(ims,kms,j)                                       &
@@ -319,7 +314,6 @@ contains
                   dz8w2d,psfcpa,                                               &
                   znt,ust,hpbl,psim,psih,                                      &
                   xland,hfx,qfx,wspd,br,                                       &
-                  dusfc,dvsfc,dtsfc,dqsfc,                                     &
                   dt,rcl,kpbl1d,                                               &
                   exch_hx,exch_mx,                                             &
                   wstar,delta,                                                 &
