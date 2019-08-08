@@ -133,7 +133,6 @@ contains
 !-- kte         end index for k in tile
 !-------------------------------------------------------------------------------
 !
-   real,parameter    ::  rcl = 1.0
 !
    integer,  intent(in   )   ::      ids,ide, jds,jde, kds,kde,                &
                                      ims,ime, jms,jme, kms,kme,                &
@@ -266,7 +265,7 @@ contains
               ,psih=psih(ims,j),xland=xland(ims,j)                             &
               ,hfx=hfx(ims,j),qfx=qfx(ims,j)                                   &
               ,wspd=wspd(ims,j),br=br(ims,j)                                   &
-              ,dt=dt,rcl=1.0,kpbl1d=kpbl2d(ims,j)                              &
+              ,dt=dt,kpbl1d=kpbl2d(ims,j)                                      &
               ,exch_hx=exch_h(ims,kms,j)                                       &
               ,exch_mx=exch_m(ims,kms,j)                                       &
               ,wstar=wstar(ims,j)                                              &
@@ -314,7 +313,7 @@ contains
                   dz8w2d,psfcpa,                                               &
                   znt,ust,hpbl,psim,psih,                                      &
                   xland,hfx,qfx,wspd,br,                                       &
-                  dt,rcl,kpbl1d,                                               &
+                  dt,kpbl1d,                                                   &
                   exch_hx,exch_mx,                                             &
                   wstar,delta,                                                 &
                   u10,v10,                                                     &
@@ -400,6 +399,7 @@ contains
    real,parameter    ::  gamcrt = 3.,gamcrq = 2.e-3
    real,parameter    ::  xka = 2.4e-5
    integer,parameter ::  imvdif = 1
+   real,parameter    ::  rcl = 1.0
 !
    integer,  intent(in   )   ::     ids,ide, jds,jde, kds,kde,                 &
                                     ims,ime, jms,jme, kms,kme,                 &
@@ -410,7 +410,7 @@ contains
 !
    integer,  intent(in)      ::     nmix
 !
-   real,     intent(in   )   ::     dt,rcl,cp,g,rovcp,rovg,rd,xlv,rv
+   real,     intent(in   )   ::     dt,cp,g,rovcp,rovg,rd,xlv,rv
 !
    real,     intent(in )     ::     ep1,ep2,karman
 !
