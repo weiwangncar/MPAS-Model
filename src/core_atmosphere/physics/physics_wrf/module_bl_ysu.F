@@ -56,9 +56,7 @@ contains
                   ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
                   ims,ime, jms,jme, kms,kme,                                   &
-                  its,ite, jts,jte, kts,kte,                                   &
-                !optional
-                  regime                                                       &
+                  its,ite, jts,jte, kts,kte                                    &
                  )
 !-------------------------------------------------------------------------------
    implicit none
@@ -135,7 +133,6 @@ contains
 !-- kte         end index for k in tile
 !-------------------------------------------------------------------------------
 !
-   real,parameter    ::  rcl = 1.0
 !
    integer,  intent(in   )   ::      ids,ide, jds,jde, kds,kde,                &
                                      ims,ime, jms,jme, kms,kme,                &
@@ -205,12 +202,6 @@ contains
              intent(out  )   ::                                        kpbl2d
    logical,  intent(in)      ::                                       flag_qi
 !
-!optional
-!
-   real,     dimension( ims:ime, jms:jme )                                   , &
-             optional                                                        , &
-             intent(inout)   ::                                        regime
-!
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
              optional                                                        , &
              intent(inout)   ::                                       rqiblten
@@ -221,13 +212,7 @@ contains
                                                                        ctopo2
 !local
    integer ::  i,j,k
-   real,     dimension( its:ite, kts:kte )  ::                            pdh
-   real,     dimension( its:ite, kts:kte+1 )  ::                         pdhi
-   real,     dimension( its:ite )  ::                                          &
-                                                                        dusfc, &
-                                                                        dvsfc, &
-                                                                        dtsfc, &
-                                                                        dqsfc
+
 !temporary allocation of local chemical species and/or passive tracers that are vertically-
 !mixed in subroutine ysu2d:
    integer,  parameter :: nmix = 5
@@ -259,18 +244,12 @@ contains
  enddo
 !
    do j = jts,jte
-      do k = kts,kte+1
-        do i = its,ite
-          if(k.le.kte)pdh(i,k) = p3d(i,k,j)
-          pdhi(i,k) = p3di(i,k,j)
-        enddo
-      enddo
 !
       call ysu2d(J=j,ux=u3d(ims,kms,j),vx=v3d(ims,kms,j)                       &
               ,tx=t3d(ims,kms,j)                                               &
               ,qvx=qv3d(ims,kms,j),qcx=qc3d(ims,kms,j),qix=qi3d(ims,kms,j)     &
               ,nmix=nmix,qmix=qmix(ims,kms,j,1)                                &
-              ,p2d=pdh(its,kts),p2di=pdhi(its,kts)                             &
+              ,p2d=p3d(ims,kms,j),p2di=p3di(ims,kms,j)                         &
               ,pi2d=pi3d(ims,kms,j)                                            &
               ,utnp=rublten(ims,kms,j),vtnp=rvblten(ims,kms,j)                 &
               ,ttnp=rthblten(ims,kms,j),qvtnp=rqvblten(ims,kms,j)              &
@@ -282,19 +261,18 @@ contains
               ,dz8w2d=dz8w(ims,kms,j)                                          &
               ,psfcpa=psfc(ims,j),znt=znt(ims,j),ust=ust(ims,j)                &
               ,hpbl=hpbl(ims,j)                                                &
-              ,regime=regime(ims,j),psim=psim(ims,j)                           &
+              ,psim=psim(ims,j)                                                &
               ,psih=psih(ims,j),xland=xland(ims,j)                             &
               ,hfx=hfx(ims,j),qfx=qfx(ims,j)                                   &
               ,wspd=wspd(ims,j),br=br(ims,j)                                   &
-              ,dusfc=dusfc,dvsfc=dvsfc,dtsfc=dtsfc,dqsfc=dqsfc                 &
-              ,dt=dt,rcl=1.0,kpbl1d=kpbl2d(ims,j)                              &
+              ,dt=dt,kpbl1d=kpbl2d(ims,j)                                      &
               ,exch_hx=exch_h(ims,kms,j)                                       &
               ,exch_mx=exch_m(ims,kms,j)                                       &
               ,wstar=wstar(ims,j)                                              &
               ,delta=delta(ims,j)                                              &
               ,u10=u10(ims,j),v10=v10(ims,j)                                   &
               ,uox=uoce(ims,j),vox=voce(ims,j)                                 &
-              ,rthraten=rthraten(ims,kms,j),p2diORG=p3di(ims,kms,j)            &
+              ,rthraten=rthraten(ims,kms,j)                                    &
               ,ysu_topdown_pblmix=ysu_topdown_pblmix                           &
               ,ctopo=ctopo(ims,j),ctopo2=ctopo2(ims,j)                         &
               ,ids=ids,ide=ide, jds=jds,jde=jde, kds=kds,kde=kde               &
@@ -335,20 +313,17 @@ contains
                   dz8w2d,psfcpa,                                               &
                   znt,ust,hpbl,psim,psih,                                      &
                   xland,hfx,qfx,wspd,br,                                       &
-                  dusfc,dvsfc,dtsfc,dqsfc,                                     &
-                  dt,rcl,kpbl1d,                                               &
+                  dt,kpbl1d,                                                   &
                   exch_hx,exch_mx,                                             &
                   wstar,delta,                                                 &
                   u10,v10,                                                     &
                   uox,vox,                                                     &
-                  rthraten,p2diORG,                                            &
+                  rthraten,                                                    &
                   ysu_topdown_pblmix,                                          &
                   ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
                   ims,ime, jms,jme, kms,kme,                                   &
-                  its,ite, jts,jte, kts,kte,                                   &
-                !optional
-                  regime                                                       &
+                  its,ite, jts,jte, kts,kte                                    &
                    )
 !-------------------------------------------------------------------------------
    implicit none
@@ -424,6 +399,7 @@ contains
    real,parameter    ::  gamcrt = 3.,gamcrq = 2.e-3
    real,parameter    ::  xka = 2.4e-5
    integer,parameter ::  imvdif = 1
+   real,parameter    ::  rcl = 1.0
 !
    integer,  intent(in   )   ::     ids,ide, jds,jde, kds,kde,                 &
                                     ims,ime, jms,jme, kms,kme,                 &
@@ -434,14 +410,13 @@ contains
 !
    integer,  intent(in)      ::     nmix
 !
-   real,     intent(in   )   ::     dt,rcl,cp,g,rovcp,rovg,rd,xlv,rv
+   real,     intent(in   )   ::     dt,cp,g,rovcp,rovg,rd,xlv,rv
 !
    real,     intent(in )     ::     ep1,ep2,karman
 !
    real,     dimension( ims:ime, kms:kme ),                                    &
              intent(in)      ::                                        dz8w2d, &
-                                                                         pi2d, &
-                                                                      p2diorg
+                                                                         pi2d
 !
    real,     dimension( ims:ime, kms:kme )                                   , &
              intent(in   )   ::                                            tx, &
@@ -467,10 +442,10 @@ contains
    real,     dimension( ims:ime, kms:kme, nmix )                             , &
              intent(inout), optional   ::                             qmixtnp
 !
-   real,     dimension( its:ite, kts:kte+1 )                                 , &
+   real,     dimension( ims:ime, kms:kme )                                   , &
              intent(in   )   ::                                          p2di
 !
-   real,     dimension( its:ite, kts:kte )                                   , &
+   real,     dimension( ims:ime, kms:kme )                                   , &
              intent(in   )   ::                                           p2d
 !
    real,     dimension( ims:ime )                                            , &
@@ -499,9 +474,6 @@ contains
              optional                                                        , &
              intent(in   )   ::                                         ctopo, &
                                                                        ctopo2
-   real,     dimension( ims:ime )                                            , &
-             optional                                                        , &
-             intent(inout)   ::                                        regime
 !
 ! local vars
 !
@@ -1023,7 +995,7 @@ contains
                 radsum=0.
                 do kk = 1,kpbl(i)-1
                    radflux=rthraten(i,kk)*pi2d(i,kk) !converts theta/s to temp/s
-                   radflux=radflux*cp/g*(p2diORG(i,kk)-p2diORG(i,kk+1)) ! converts temp/s to W/m^2
+                   radflux=radflux*cp/g*(p2di(i,kk)-p2di(i,kk+1)) ! converts temp/s to W/m^2
                    if (radflux < 0.0 ) radsum=abs(radflux)+radsum
                 enddo
                 radsum=max(radsum,0.0)
