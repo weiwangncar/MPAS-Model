@@ -1677,60 +1677,6 @@ contains
 !-------------------------------------------------------------------------------
 !
 !-------------------------------------------------------------------------------
-   subroutine ysuinit(rublten,rvblten,rthblten,rqvblten,                       &
-                      rqcblten,rqiblten,p_qi,p_first_scalar,                   &
-                      restart, allowed_to_read,                                &
-                      ids, ide, jds, jde, kds, kde,                            &
-                      ims, ime, jms, jme, kms, kme,                            &
-                      its, ite, jts, jte, kts, kte                 )
-!-------------------------------------------------------------------------------
-   implicit none
-!-------------------------------------------------------------------------------
-!
-   logical , intent(in)          :: restart, allowed_to_read
-   integer , intent(in)          ::  ids, ide, jds, jde, kds, kde,             &
-                                     ims, ime, jms, jme, kms, kme,             &
-                                     its, ite, jts, jte, kts, kte
-   integer , intent(in)          ::  p_qi,p_first_scalar
-   real , dimension( ims:ime , kms:kme , jms:jme ), intent(out) ::             &
-                                                                      rublten, &
-                                                                      rvblten, &
-                                                                     rthblten, &
-                                                                     rqvblten, &
-                                                                     rqcblten, &
-                                                                     rqiblten
-   integer :: i, j, k, itf, jtf, ktf
-!
-   jtf = min0(jte,jde-1)
-   ktf = min0(kte,kde-1)
-   itf = min0(ite,ide-1)
-!
-   if(.not.restart)then
-     do j = jts,jtf
-       do k = kts,ktf
-         do i = its,itf
-            rublten(i,k,j) = 0.
-            rvblten(i,k,j) = 0.
-            rthblten(i,k,j) = 0.
-            rqvblten(i,k,j) = 0.
-            rqcblten(i,k,j) = 0.
-         enddo
-       enddo
-     enddo
-   endif
-!
-   if (p_qi .ge. p_first_scalar .and. .not.restart) then
-     do j = jts,jtf
-       do k = kts,ktf
-         do i = its,itf
-           rqiblten(i,k,j) = 0.
-         enddo
-       enddo
-     enddo
-   endif
-!
-   end subroutine ysuinit
-!-------------------------------------------------------------------------------
 ! ==================================================================
 
       SUBROUTINE GET_PBLH(KTS,KTE,zi,thetav1D,qke1D,zw1D,dz1D,landsea)
