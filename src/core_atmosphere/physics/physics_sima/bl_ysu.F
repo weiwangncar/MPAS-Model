@@ -2,24 +2,24 @@
 !module_bl_ysu.F was modified to accomodate both the WRF and MPAS models / 2018-12-7 
 
 !modifications to sourcecode for future implementation using the CPF:
-! * in subroutine ysu2d, split the array qx containing the water vapor, cloud water, and cloud ice (if available)
+! * in subroutine bl_ysu, split the array qx containing the water vapor, cloud water, and cloud ice (if available)
 !   mixing ratios into 3 separate arrays (qvx, qcx, and qix if available). similarly, split the array qntp into 3
 !   separate arrays for the tendency of water vapor, cloud water, and cloud ice (if available) due to vertical
 !   mixing. now do the vertical mixing for water vapor, cloud water, and ice separately.
 !   Laura D. Fowler (laura@ucar.edu) / 2019-07-25.
 ! * in subroutine ysu, added and initialize the local arrays qmix and rqmixblten to include the vertical mixing
-!   of number concentrations, aerosols, chemical species and/or passive tracers for use in subroutine ysu2d. for
+!   of number concentrations, aerosols, chemical species and/or passive tracers for use in subroutine bl_ysu. for
 !   now these arrays are simple place holders.
 !   Laura D. Fowler (laura@ucar.edu) / 2019-07-25.
-! * in subroutine ysu2d, cleaned up the calculation of the k-coefficients for water vapor,cloud water,cloud ice,
+! * in subroutine bl_ysu, cleaned up the calculation of the k-coefficients for water vapor,cloud water,cloud ice,
 !   and chemical species/passive tracers. Because all water species,and chemical tracers/passive tracers share
 !   the same k-coefficients,many of the input arrays (with the exception of r1 and f1) do not need to be computed
 !   over and over. this required to clean up the subroutine tridin_ysu so that some of those arrays (like au) are
 !   not overwritten.
 !   Laura D. Fowler (laura@ucar.edu) / 2019-08-02.
-! * in subroutine ysu2d, added the initialization of local and output k-coefficients.
+! * in subroutine bl_ysu, added the initialization of local and output k-coefficients.
 !   Laura D. Fowler (laura@ucar.edu) / 2019-08-02.
-! * in subroutine ysu2d, modified the call to subroutine get_pblh. on cheyenne with the -g option, intel compilers
+! * in subroutine bl_ysu, modified the call to subroutine get_pblh. on cheyenne with the -g option, intel compilers
 !   create temporary arrays that lead MPAS to run extremely slow. This is remedied by first copying a few of the
 !   targeted arrays to dummy kts:kte arrays prior to the call to get_pblh.
 !   Laura D. Fowler (laura@ucar.edu) / 2019-08-03.
@@ -214,7 +214,7 @@ contains
    integer ::  i,j,k
 
 !temporary allocation of local chemical species and/or passive tracers that are vertically-
-!mixed in subroutine ysu2d:
+!mixed in subroutine bl_ysu:
    integer,  parameter :: nmix = 5
    integer :: n
    real,     dimension ( ims:ime, kms:kme, jms:jme, nmix) ::             qmix
@@ -245,7 +245,7 @@ contains
 !
    do j = jts,jte
 !
-      call ysu2d(J=j,ux=u3d(ims,kms,j),vx=v3d(ims,kms,j)                       &
+      call bl_ysu(J=j,ux=u3d(ims,kms,j),vx=v3d(ims,kms,j)                      &
               ,tx=t3d(ims,kms,j)                                               &
               ,qvx=qv3d(ims,kms,j),qcx=qc3d(ims,kms,j),qix=qi3d(ims,kms,j)     &
               ,nmix=nmix,qmix=qmix(ims,kms,j,1)                                &
@@ -286,7 +286,7 @@ contains
      enddo
 !
 !  call mpas_log_write(' ')
-!  call mpas_log_write('--- end subroutine ysu2d:')
+!  call mpas_log_write('--- end subroutine bl_ysu:')
 !  do i = its,ite
 !     do k = kts, kte
 !        call mpas_log_write('$i $i $r $r $r $r $r $r',intArgs=(/i,k/),realArgs=(/rthblten(i,k,j), &
@@ -307,7 +307,7 @@ contains
 !
 !-------------------------------------------------------------------------------
 !
-   subroutine ysu2d(j,ux,vx,tx,qvx,qcx,qix,nmix,qmix,p2d,p2di,pi2d,            &
+   subroutine bl_ysu(j,ux,vx,tx,qvx,qcx,qix,nmix,qmix,p2d,p2di,pi2d,            &
                   utnp,vtnp,ttnp,qvtnp,qctnp,qitnp,qmixtnp,                    &
                   cp,g,rovcp,rd,rovg,ep1,ep2,karman,xlv,rv,                    &
                   dz8w2d,psfcpa,                                               &
@@ -1510,7 +1510,7 @@ contains
      kpbl1d(i) = kpbl(i)
    enddo
 !
-   end subroutine ysu2d
+   end subroutine bl_ysu
 !-------------------------------------------------------------------------------
 !
 !-------------------------------------------------------------------------------
