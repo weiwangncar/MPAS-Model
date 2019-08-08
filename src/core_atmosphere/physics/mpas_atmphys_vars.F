@@ -66,7 +66,7 @@
 !   config_frac_seaice is set to true.
 !   Laura D. Fowler (laura@ucar.edu) / 2016-10-21.
 ! * moved the declarations of arrays delta_p,wstar_p,uoce_p,and voce_p since they are now used in both modules
-!   module_bl_ysu.F and module_bl_mynn.F.
+!   bl_ysu.F and module_bl_mynn.F.
 !   Laura D. Fowler (laura@ucar.edu) / 2016-10-27.
 ! * added the variable opt_thcnd (option to treat thermal conductivity in NoahLSM). added additional options and
 !   arrays to run the Noah LSM scheme from WRF version 3.9.0.
