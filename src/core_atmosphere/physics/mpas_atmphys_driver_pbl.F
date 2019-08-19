@@ -16,7 +16,7 @@
 
 !wrf physics:
  use module_bl_mynn
- use module_bl_ysu
+ use bl_ysu
 
  implicit none
  private
@@ -38,7 +38,7 @@
 !
 ! WRF physics called from driver_pbl:
 ! -----------------------------------
-! * module_bl_ysu : YSU PBL scheme.
+! * bl_ysu : YSU PBL scheme.
 !
 ! add-ons and modifications to sourcecode:
 ! ----------------------------------------
@@ -60,13 +60,13 @@
 ! * for the mynn parameterization, change the definition of dx_p to match that used in other physics
 !   parameterizations.
 !   Laura D. Fowler (laura@ucar.edu) / 2016-10-18.
-! * updated the call to subroutine ysu in comjunction with updating module_bl_ysu.F from WRF version 3.6.1 to
+! * updated the call to subroutine ysu in comjunction with updating bl_ysu.F from WRF version 3.6.1 to
 !   WRF version 3.8.1
 !   Laura D. Fowler (laura@ucar.edu) / 2016-10-27.
 ! * since we removed the local variable pbl_scheme from mpas_atmphys_vars.F, now defines pbl_scheme as a pointer
 !   to config_pbl_scheme.
 !   Laura D. Fowler (laura@ucar.edu) / 2917-02-16.
-! * after updating module_bl_ysu.F to WRF version 4.0.3, corrected call to subroutine ysu to output diagnostics of
+! * after updating bl_ysu.F to WRF version 4.0.3, corrected call to subroutine ysu to output diagnostics of
 !   exchange coefficients exch_h and exch_m.
 !   Laura D. Fowler (laura@ucar.edu) / 2019-03-12.
 ! * remove unnecessary "regime" field from YSU call
