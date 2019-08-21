@@ -219,6 +219,9 @@ contains
    integer :: n
    real,     dimension ( ims:ime, kms:kme, jms:jme, nmix) ::             qmix
    real,     dimension ( ims:ime, kms:kme, jms:jme, nmix) ::       rqmixblten
+! 
+   logical ::                                                            f_qc, &
+                                                                         f_qi
 
    !  Local tile-sized arrays for contiguous data for bl_ysu_run call.
       
@@ -274,9 +277,9 @@ contains
                                                              kpbl2d_hv
 
 !temporary initialization of chemical species or passive tracers:
- do j = jms, jme
-    do k = kms, kme
-       do i = ims, ime
+ do j = jts, jte
+    do k = kts, kte
+       do i = its, ite
           n = 1
           qmix(i,k,j,n) = 0.
           rqmixblten(i,k,j,n) = 0.
@@ -295,6 +298,25 @@ contains
        enddo
    enddo
  enddo
+!
+   f_qc = .true.
+   f_qi = .true.
+!
+!
+!-----initialize vertical mixing tendencies
+!
+   do j = jts, jte
+      do k = kts, kte
+         do i = its, ite
+            rublten(i,k,j)    = 0.
+            rvblten(i,k,j)    = 0.
+            rthblten(i,k,j)   = 0.
+            rqvblten(i,k,j)   = 0.
+            rqcblten(i,k,j)   = 0.
+            rqiblten(i,k,j)   = 0.
+         enddo
+      enddo
+   enddo
 !
    do j = jts,jte
 !
@@ -364,6 +386,7 @@ contains
       call bl_ysu_run(J=j,ux=u3d_hv,vx=v3d_hv                                  &
               ,tx=t3d_hv                                                       &
               ,qvx=qv3d_hv,qcx=qc3d_hv,qix=qi3d_hv                             &
+              ,f_qc=f_qc,f_qi=f_qi                                             &
               ,nmix=nmix,qmix=qmix_hv                                          &
               ,p2d=p3d_hv,p2di=p3di_hv                                         &
               ,pi2d=pi3d_hv                                                    &
@@ -458,6 +481,7 @@ contains
 !-------------------------------------------------------------------------------
 !
    subroutine bl_ysu_run(j,ux,vx,tx,qvx,qcx,qix,nmix,qmix,p2d,p2di,pi2d,       &
+                  f_qc,f_qi,                                                   &
                   utnp,vtnp,ttnp,qvtnp,qctnp,qitnp,qmixtnp,                    &
                   cp,g,rovcp,rd,rovg,ep1,ep2,karman,xlv,rv,                    &
                   dz8w2d,psfcpa,                                               &
@@ -560,6 +584,8 @@ contains
 !
    real,     intent(in )     ::     ep1,ep2,karman
 !
+   logical,  intent(in )     ::     f_qc, f_qi
+!
    real,     dimension( its:ite, kts:kte ),                                    &
              intent(in)      ::                                        dz8w2d, &
                                                                          pi2d
@@ -580,10 +606,8 @@ contains
                                                                          vtnp, &
                                                                          ttnp, &
                                                                         qvtnp, &
-                                                                        qctnp
-!
-   real,     dimension( its:ite, kts:kte )                                   , &
-             intent(inout), optional   ::                               qitnp
+                                                                        qctnp, &
+                                                                        qitnp
 !
    real,     dimension( its:ite, kts:kte, nmix )                             , &
              intent(inout), optional   ::                             qmixtnp
@@ -703,7 +727,8 @@ contains
    real, dimension( its:ite )              ::                           delta
    real, dimension( its:ite, kts:kte )     ::                     xkzml,xkzhl, &
                                                                zfacent,entfac
-   real, dimension( its:ite, kts:kte )     ::                            qixl
+   real, dimension( its:ite, kts:kte )     ::                            qcxl, &
+                                                                         qixl
    real, dimension( its:ite, kts:kte, nmix ) ::                         qmixl
    real, dimension( its:ite )              ::                            ust3, &
                                                                        wstar3, &
@@ -742,11 +767,24 @@ contains
 !
 !  k-start index for tracer diffusion
 !
-   if(present(qix) .and. present(qitnp)) then
+   if(f_qc) then
+      do k = kts,kte
+        do i = its,ite
+           qcxl(i,k)  = qcx(i,k)
+        enddo
+      enddo
+   else
+      do k = kts,kte
+        do i = its,ite
+           qcxl(i,k) = 0.
+        enddo
+      enddo
+   endif
+!
+   if(f_qi) then
       do k = kts,kte
         do i = its,ite
            qixl(i,k)  = qix(i,k)
-           qitnp(i,k) = 0.
         enddo
       enddo
    else
@@ -760,7 +798,7 @@ contains
    do k = kts,kte
      do i = its,ite
        thx(i,k) = tx(i,k)/pi2d(i,k)
-       thlix(i,k) = (tx(i,k)-xlv*qcx(i,k)/cp-2.834E6*qixl(i,k)/cp)/pi2d(i,k)
+       thlix(i,k) = (tx(i,k)-xlv*qcxl(i,k)/cp-2.834E6*qixl(i,k)/cp)/pi2d(i,k)
      enddo
    enddo
 !
@@ -809,15 +847,6 @@ contains
        dza(i,k) = za(i,k)-za(i,k-1)
      enddo
    enddo
-!
-!
-!-----initialize vertical tendencies and
-!
-   utnp(its:ite,:) = 0.
-   vtnp(its:ite,:) = 0.
-   ttnp(its:ite,:) = 0.
-   qvtnp(its:ite,:) = 0.
-   qctnp(its:ite,:) = 0.
 !
 !-----initialize output and local exchange coefficents:
    do k = kts,kte
@@ -1121,19 +1150,19 @@ contains
        bfxpbl(i) = -0.15*thvx(i,1)/g*wm3/hpbl(i)
        dthvx(i)  = max(thvx(i,k+1)-thvx(i,k),tmin)
        we(i) = max(bfxpbl(i)/dthvx(i),-sqrt(wm2(i)))
-       if((qcx(i,k)+qixl(i,k)).gt.0.01e-3.and.ysu_topdown_pblmix.eq.1)then
+       if((qcxl(i,k)+qixl(i,k)).gt.0.01e-3.and.ysu_topdown_pblmix.eq.1)then
            if ( kpbl(i) .ge. 2) then
                 cloudflg(i)=.true. 
                 templ=thlix(i,k)*(p2di(i,k+1)/100000)**rovcp
                 !rvls is ws at full level
                 rvls=100.*6.112*EXP(17.67*(templ-273.16)/(templ-29.65))*(ep2/p2di(i,k+1))
-                temps=templ + ((qvx(i,k)+qcx(i,k))-rvls)/(cp/xlv  + &
+                temps=templ + ((qvx(i,k)+qcxl(i,k))-rvls)/(cp/xlv  + &
                 ep2*xlv*rvls/(rd*templ**2))
                 rvls=100.*6.112*EXP(17.67*(temps-273.15)/(temps-29.65))*(ep2/p2di(i,k+1))
-                rcldb=max((qvx(i,k)+qcx(i,k))-rvls,0.)
+                rcldb=max((qvx(i,k)+qcxl(i,k))-rvls,0.)
                 !entrainment efficiency
-                dthvx(i)  = (thlix(i,k+2)+thx(i,k+2)*ep1*(qvx(i,k+2)+qcx(i,k+2))) &
-                          - (thlix(i,k) + thx(i,k)  *ep1*(qvx(i,k)  +qcx(i,k)))
+                dthvx(i)  = (thlix(i,k+2)+thx(i,k+2)*ep1*(qvx(i,k+2)+qcxl(i,k+2))) &
+                          - (thlix(i,k) + thx(i,k)  *ep1*(qvx(i,k)  +qcxl(i,k)))
                 dthvx(i)  = max(dthvx(i),0.1)
                 tmp1      = xlv/cp * rcldb/(pi2d(i,k)*dthvx(i))
                 ent_eff   = 0.2 * 8. * tmp1 +0.2
@@ -1274,8 +1303,8 @@ contains
          govrthv = g/(0.5*(thvx(i,k+1)+thvx(i,k)))
          ri = govrthv*(thvx(i,k+1)-thvx(i,k))/(ss*dza(i,k+1))
          if(imvdif.eq.1)then
-           if((qcx(i,k)+qixl(i,k)).gt.0.01e-3.and. &
-              (qcx(i,k+1)+qixl(i,k+1)).gt.0.01e-3)then
+           if((qcxl(i,k)+qixl(i,k)).gt.0.01e-3.and. &
+              (qcxl(i,k+1)+qixl(i,k+1)).gt.0.01e-3)then
 !      in cloud
              qmean = 0.5*(qvx(i,k)+qvx(i,k+1))
              tmean = 0.5*(tx(i,k)+tx(i,k+1))
@@ -1446,23 +1475,25 @@ contains
    enddo
 
    !--- cloud water:
-   do i = its,ite
-      do k = kts,kte
-         f1(i,k) = qcx(i,k)
-         r1(i,k) = f1(i,k)
+   if(f_qc) then
+      do i = its,ite
+         do k = kts,kte
+            f1(i,k) = qcxl(i,k)
+            r1(i,k) = f1(i,k)
+         enddo
       enddo
-   enddo
-   call tridin_ysu(al,ad,cu,r1,au,f1,its,ite,kts,kte,1)
-
-   do i = its,ite
-      do k = kte,kts,-1
-         qtend = (f1(i,k)-qcx(i,k))*rdt
-         qctnp(i,k) = qctnp(i,k)+qtend
+      call tridin_ysu(al,ad,cu,r1,au,f1,its,ite,kts,kte,1)
+   
+      do i = its,ite
+         do k = kte,kts,-1
+            qtend = (f1(i,k)-qcxl(i,k))*rdt
+            qctnp(i,k) = qctnp(i,k)+qtend
+         enddo
       enddo
-   enddo
+   endif
 
    !--- cloud ice:
-   if(present(qix) .and. present(qitnp)) then
+   if(f_qi) then
       do i = its,ite
          do k = kts,kte
             f1(i,k) = qixl(i,k)
@@ -1481,8 +1512,8 @@ contains
 
    !--- chemical species and/or passive tracers, meaning all variables that we want to
    !    be vertically-mixed:
-   if(present(qmix) .and. present(qmixtnp) .and. nmix > 0) then
-      Do n = 1, nmix
+   if(nmix > 0) then
+      do n = 1, nmix
          do i = its,ite
             do k = kts,kte
                f1(i,k) = qmix(i,k,n)
