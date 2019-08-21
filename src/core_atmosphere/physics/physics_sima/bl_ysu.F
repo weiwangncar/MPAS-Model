@@ -220,6 +220,57 @@ contains
    real,     dimension ( ims:ime, kms:kme, jms:jme, nmix) ::             qmix
    real,     dimension ( ims:ime, kms:kme, jms:jme, nmix) ::       rqmixblten
 
+   !  Local tile-sized arrays for contiguous data for bl_ysu_run call.
+      
+   real,                   dimension(its:ite,kts:kte,nmix) ::              &
+                                                             qmix_hv     , &
+                                                             rqmixblten_hv
+      
+   real,                   dimension(its:ite,kts:kte)      ::              &
+                                                             u3d_hv      , &
+                                                             v3d_hv      , &
+                                                             t3d_hv      , &
+                                                             qv3d_hv     , &
+                                                             qc3d_hv     , &
+                                                             qi3d_hv     , &
+                                                             p3d_hv      , &
+                                                             p3di_hv     , &
+                                                             pi3d_hv     , &
+                                                             rublten_hv  , &
+                                                             rvblten_hv  , &
+                                                             rthblten_hv , &
+                                                             rqvblten_hv , &
+                                                             rqcblten_hv , &
+                                                             rqiblten_hv , &
+                                                             dz8w_hv     , &
+                                                             exch_h_hv   , &
+                                                             exch_m_hv   , &
+                                                             rthraten_hv
+      
+   real,                   dimension(its:ite)              ::              &
+                                                             psfc_hv     , &
+                                                             znt_hv      , &
+                                                             ust_hv      , &
+                                                             hpbl_hv     , &
+                                                             psim_hv     , &
+                                                             psih_hv     , &
+                                                             xland_hv    , &
+                                                             hfx_hv      , &
+                                                             qfx_hv      , &
+                                                             wspd_hv     , &
+                                                             br_hv       , &
+                                                             wstar_hv    , &
+                                                             delta_hv    , &
+                                                             u10_hv      , &
+                                                             v10_hv      , &
+                                                             uoce_hv     , &
+                                                             voce_hv     , &
+                                                             ctopo_hv    , &
+                                                             ctopo2_hv
+      
+   integer                 dimension(its:ite)              ::              &
+                                                             kpbl2d_hv
+
 !temporary initialization of chemical species or passive tracers:
  do j = jms, jme
     do k = kms, kme
@@ -245,39 +296,128 @@ contains
 !
    do j = jts,jte
 !
-      call bl_ysu_run(J=j,ux=u3d(ims,kms,j),vx=v3d(ims,kms,j)                      &
-              ,tx=t3d(ims,kms,j)                                               &
-              ,qvx=qv3d(ims,kms,j),qcx=qc3d(ims,kms,j),qix=qi3d(ims,kms,j)     &
-              ,nmix=nmix,qmix=qmix(ims,kms,j,1)                                &
-              ,p2d=p3d(ims,kms,j),p2di=p3di(ims,kms,j)                         &
-              ,pi2d=pi3d(ims,kms,j)                                            &
-              ,utnp=rublten(ims,kms,j),vtnp=rvblten(ims,kms,j)                 &
-              ,ttnp=rthblten(ims,kms,j),qvtnp=rqvblten(ims,kms,j)              &
-              ,qctnp=rqcblten(ims,kms,j),qitnp=rqiblten(ims,kms,j)             &
-              ,qmixtnp=rqmixblten(ims,kms,j,1)                                 &
+      !  Assign input data to local tile-sized arrays.
+      
+      do n = 1, nmix
+         do k = kts, kte
+            do i = its, ite
+               qmix_hv(i,k,n) = qmix(i,k,j,n)
+               rqmixblten_hv(i,k,n) = rqmixblten(i,k,j,n)
+            end do
+         end do
+      end do
+      
+      do k = kts, kte
+         do i = its, ite
+            u3d_hv(i,k) = u3d(i,k,j)
+            v3d_hv(i,k) = v3d(i,k,j)
+            t3d_hv(i,k) = t3d(i,k,j)
+            qv3d_hv(i,k) = qv3d(i,k,j)
+            qc3d_hv(i,k) = qc3d(i,k,j)
+            qi3d_hv(i,k) = qi3d(i,k,j)
+            p3d_hv(i,k) = p3d(i,k,j)
+            p3di_hv(i,k) = p3di(i,k,j)
+            pi3d_hv(i,k) = pi3d(i,k,j)
+            rublten_hv(i,k) = rublten(i,k,j)
+            rvblten_hv(i,k) = rvblten(i,k,j)
+            rthblten_hv(i,k) = rthblten(i,k,j)
+            rqvblten_hv(i,k) = rqvblten(i,k,j)
+            rqcblten_hv(i,k) = rqcblten(i,k,j)
+            rqiblten_hv(i,k) = rqiblten(i,k,j)
+            dz8w_hv(i,k) = dz8w(i,k,j)
+            exch_h_hv(i,k) = exch_h(i,k,j)
+            exch_m_hv(i,k) = exch_m(i,k,j)
+            rthraten_hv(i,k) = rthraten(i,k,j)
+         end do
+      end do
+      
+      do i = its, ite
+         psfc_hv(i) = psfc(i,j)
+         znt_hv(i) = znt(i,j)
+         ust_hv(i) = ust(i,j)
+         hpbl_hv(i) = hpbl(i,j)
+         psim_hv(i) = psim(i,j)
+         psih_hv(i) = psih(i,j)
+         xland_hv(i) = xland(i,j)
+         hfx_hv(i) = hfx(i,j)
+         qfx_hv(i) = qfx(i,j)
+         wspd_hv(i) = wspd(i,j)
+         br_hv(i) = br(i,j)
+         kpbl2d_hv(i) = kpbl2d(i,j)
+         wstar_hv(i) = wstar(i,j)
+         delta_hv(i) = delta(i,j)
+         u10_hv(i) = u10(i,j)
+         v10_hv(i) = v10(i,j)
+         uoce_hv(i) = uoce(i,j)
+         voce_hv(i) = voce(i,j)
+         ctopo_hv(i) = ctopo(i,j)
+         ctopo2_hv(i) = ctopo2(i,j)
+      end do
+!
+      call bl_ysu_run(J=j,ux=u3d_hv,vx=v3d_hv                                  &
+              ,tx=t3d_hv                                                       &
+              ,qvx=qv3d_hv,qcx=qc3d_hv,qix=qi3d_hv                             &
+              ,nmix=nmix,qmix=qmix_hv                                          &
+              ,p2d=p3d_hv,p2di=p3di_hv                                         &
+              ,pi2d=pi3d_hv                                                    &
+              ,utnp=rublten_hv,vtnp=rvblten_hv                                 &
+              ,ttnp=rthblten_hv,qvtnp=rqvblten_hv                              &
+              ,qctnp=rqcblten_hv,qitnp=rqiblten_hv                             &
+              ,qmixtnp=rqmixblten_hv                                           &
               ,cp=cp,g=g,rovcp=rovcp,rd=rd,rovg=rovg                           &    
               ,xlv=xlv,rv=rv                                                   &
               ,ep1=ep1,ep2=ep2,karman=karman                                   &
-              ,dz8w2d=dz8w(ims,kms,j)                                          &
-              ,psfcpa=psfc(ims,j),znt=znt(ims,j),ust=ust(ims,j)                &
-              ,hpbl=hpbl(ims,j)                                                &
-              ,psim=psim(ims,j)                                                &
-              ,psih=psih(ims,j),xland=xland(ims,j)                             &
-              ,hfx=hfx(ims,j),qfx=qfx(ims,j)                                   &
-              ,wspd=wspd(ims,j),br=br(ims,j)                                   &
-              ,dt=dt,kpbl1d=kpbl2d(ims,j)                                      &
-              ,exch_hx=exch_h(ims,kms,j)                                       &
-              ,exch_mx=exch_m(ims,kms,j)                                       &
-              ,wstar=wstar(ims,j)                                              &
-              ,delta=delta(ims,j)                                              &
-              ,u10=u10(ims,j),v10=v10(ims,j)                                   &
-              ,uox=uoce(ims,j),vox=voce(ims,j)                                 &
-              ,rthraten=rthraten(ims,kms,j)                                    &
+              ,dz8w2d=dz8w_hv                                                  &
+              ,psfcpa=psfc_hv,znt=znt_hv,ust=ust_hv                            &
+              ,hpbl=hpbl_hv                                                    &
+              ,psim=psim_hv                                                    &
+              ,psih=psih_hv,xland=xland_hv                                     &
+              ,hfx=hfx_hv,qfx=qfx_hv                                           &
+              ,wspd=wspd_hv,br=br_hv                                           &
+              ,dt=dt,kpbl1d=kpbl2d_hv                                          &
+              ,exch_hx=exch_h_hv                                               &
+              ,exch_mx=exch_m_hv                                               &
+              ,wstar=wstar_hv                                                  &
+              ,delta=delta_hv                                                  &
+              ,u10=u10_hv,v10=v10_hv                                           &
+              ,uox=uoce_hv,vox=voce_hv                                         &
+              ,rthraten=rthraten_hv                                            &
               ,ysu_topdown_pblmix=ysu_topdown_pblmix                           &
-              ,ctopo=ctopo(ims,j),ctopo2=ctopo2(ims,j)                         &
+              ,ctopo=ctopo_hv,ctopo2=ctopo2_hv                                 &
               ,ids=ids,ide=ide, jds=jds,jde=jde, kds=kds,kde=kde               &
               ,ims=ims,ime=ime, jms=jms,jme=jme, kms=kms,kme=kme               &
               ,its=its,ite=ite, jts=jts,jte=jte, kts=kts,kte=kte   )
+!
+      !  Assign local data back to full-sized arrays.
+      !  Only required for the INTENT(OUT) or INTENT(INOUT) arrays.
+      
+      do n = 1, nmix
+         do k = kts, kte
+            do i = its, ite
+               rqmixblten(i,k,j,n) = rqmixblten_hv(i,k,n)
+            end do
+         end do
+      end do
+      
+      do k = kts, kte
+         do i = its, ite
+            rublten(i,k,j) = rublten_hv(i,k)
+            rvblten(i,k,j) = rvblten_hv(i,k)
+            rthblten(i,k,j) = rthblten_hv(i,k)
+            rqvblten(i,k,j) = rqvblten_hv(i,k)
+            rqcblten(i,k,j) = rqcblten_hv(i,k)
+            rqiblten(i,k,j) = rqiblten_hv(i,k)
+            exch_h(i,k,j) = exch_h_hv(i,k)
+            exch_m(i,k,j) = exch_m_hv(i,k)
+         end do
+      end do
+      
+      do i = its, ite
+         hpbl(i,j) = hpbl_hv(i)
+         kpbl2d(i,j) = kpbl2d_hv(i)
+         wstar(i,j) = wstar_hv(i)
+         delta(i,j) = delta_hv(i)
+      end do
 !
      do k = kts,kte
        do i = its,ite
@@ -414,63 +554,63 @@ contains
 !
    real,     intent(in )     ::     ep1,ep2,karman
 !
-   real,     dimension( ims:ime, kms:kme ),                                    &
+   real,     dimension( its:ite, kts:kte ),                                    &
              intent(in)      ::                                        dz8w2d, &
                                                                          pi2d
 !
-   real,     dimension( ims:ime, kms:kme )                                   , &
+   real,     dimension( its:ite, kts:kte )                                   , &
              intent(in   )   ::                                            tx, &
                                                                           qvx, &
                                                                           qcx
 !
-   real,     dimension( ims:ime, kms:kme )                                   , &
+   real,     dimension( its:ite, kts:kte )                                   , &
              intent(in   ), optional   ::                                 qix
 !
-   real,     dimension( ims:ime, kms:kme, nmix )                             , &
+   real,     dimension( its:ite, kts:kte, nmix )                             , &
              intent(in   ), optional   ::                                qmix
 !
-   real,     dimension( ims:ime, kms:kme )                                   , &
+   real,     dimension( its:ite, kts:kte )                                   , &
              intent(inout)   ::                                          utnp, &
                                                                          vtnp, &
                                                                          ttnp, &
                                                                         qvtnp, &
                                                                         qctnp
 !
-   real,     dimension( ims:ime, kms:kme )                                   , &
+   real,     dimension( its:ite, kts:kte )                                   , &
              intent(inout), optional   ::                               qitnp
 !
-   real,     dimension( ims:ime, kms:kme, nmix )                             , &
+   real,     dimension( its:ite, kts:kte, nmix )                             , &
              intent(inout), optional   ::                             qmixtnp
 !
-   real,     dimension( ims:ime, kms:kme )                                   , &
+   real,     dimension( its:ite, kts:kte )                                   , &
              intent(in   )   ::                                          p2di
 !
-   real,     dimension( ims:ime, kms:kme )                                   , &
+   real,     dimension( its:ite, kts:kte )                                   , &
              intent(in   )   ::                                           p2d
 !
-   real,     dimension( ims:ime )                                            , &
+   real,     dimension( its:ite )                                            , &
              intent(inout)   ::                                           ust, &
                                                                          hpbl, &
                                                                           znt
-   real,     dimension( ims:ime )                                            , &
+   real,     dimension( its:ite )                                            , &
              intent(in   )   ::                                         xland, &
                                                                           hfx, &
                                                                           qfx
 !
-   real,     dimension( ims:ime ), intent(inout)   ::                    wspd
-   real,     dimension( ims:ime ), intent(in  )    ::                      br
+   real,     dimension( its:ite ), intent(inout)   ::                    wspd
+   real,     dimension( its:ite ), intent(in  )    ::                      br
 !
-   real,     dimension( ims:ime ), intent(in   )   ::                    psim, &
+   real,     dimension( its:ite ), intent(in   )   ::                    psim, &
                                                                          psih
 !
-   real,     dimension( ims:ime ), intent(in   )   ::                  psfcpa
-   integer,  dimension( ims:ime ), intent(out  )   ::                  kpbl1d
+   real,     dimension( its:ite ), intent(in   )   ::                  psfcpa
+   integer,  dimension( its:ite ), intent(out  )   ::                  kpbl1d
 !
-   real,     dimension( ims:ime, kms:kme )                                   , &
+   real,     dimension( its:ite, kts:kte )                                   , &
              intent(in   )   ::                                            ux, &
                                                                            vx, &
                                                                       rthraten
-   real,     dimension( ims:ime )                                            , &
+   real,     dimension( its:ite )                                            , &
              optional                                                        , &
              intent(in   )   ::                                         ctopo, &
                                                                        ctopo2
@@ -514,14 +654,14 @@ contains
 !
 !jdf added exch_hx
 !
-   real,    dimension( ims:ime, kms:kme )                                    , &
+   real,    dimension( its:ite, kts:kte )                                    , &
             intent(inout)   ::                                        exch_hx, &
                                                                       exch_mx
 !
-   real,    dimension( ims:ime )                                             , &
+   real,    dimension( its:ite )                                             , &
             intent(inout)    ::                                           u10, &
                                                                           v10
-   real,    dimension( ims:ime )                                             , &
+   real,    dimension( its:ite )                                             , &
             intent(in  )    ::                                            uox, &
                                                                           vox
    real,    dimension( its:ite )    ::                                         &
