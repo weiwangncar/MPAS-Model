@@ -597,7 +597,7 @@ contains
                                                                           qix
 !
    real,     dimension( its:ite, kts:kte, nmix )                             , &
-             intent(in   ), optional   ::                                qmix
+             intent(in   )   ::                                          qmix
 !
    real,     dimension( its:ite, kts:kte )                                   , &
              intent(inout)   ::                                          utnp, &
@@ -608,7 +608,7 @@ contains
                                                                         qitnp
 !
    real,     dimension( its:ite, kts:kte, nmix )                             , &
-             intent(inout), optional   ::                             qmixtnp
+             intent(inout)   ::                                       qmixtnp
 !
    real,     dimension( its:ite, kts:kte+1 )                                 , &
              intent(in   )   ::                                          p2di
