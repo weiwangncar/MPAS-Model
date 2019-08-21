@@ -683,7 +683,7 @@ contains
 !jdf added exch_hx
 !
    real,    dimension( its:ite, kts:kte )                                    , &
-            intent(inout)   ::                                        exch_hx, &
+            intent(out  )   ::                                        exch_hx, &
                                                                       exch_mx
 !
    real,    dimension( its:ite )                                             , &
