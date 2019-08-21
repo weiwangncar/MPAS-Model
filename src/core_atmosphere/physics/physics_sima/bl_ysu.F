@@ -268,7 +268,7 @@ contains
                                                              ctopo_hv    , &
                                                              ctopo2_hv
       
-   integer                 dimension(its:ite)              ::              &
+   integer,                dimension(its:ite)              ::              &
                                                              kpbl2d_hv
 
 !temporary initialization of chemical species or passive tracers:
@@ -413,6 +413,11 @@ contains
       end do
       
       do i = its, ite
+         ust(i,j) = ust_hv(i)
+         znt(i,j) = znt_hv(i)
+         wspd(i,j) = wspd_hv(i)
+         u10(i,j) = u10_hv(i)
+         v10(i,j) = v10_hv(i)
          hpbl(i,j) = hpbl_hv(i)
          kpbl2d(i,j) = kpbl2d_hv(i)
          wstar(i,j) = wstar_hv(i)
