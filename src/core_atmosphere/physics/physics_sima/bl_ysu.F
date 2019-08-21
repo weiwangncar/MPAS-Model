@@ -593,10 +593,8 @@ contains
    real,     dimension( its:ite, kts:kte )                                   , &
              intent(in   )   ::                                            tx, &
                                                                           qvx, &
-                                                                          qcx
-!
-   real,     dimension( its:ite, kts:kte )                                   , &
-             intent(in   ), optional   ::                                 qix
+                                                                          qcx, &
+                                                                          qix
 !
    real,     dimension( its:ite, kts:kte, nmix )                             , &
              intent(in   ), optional   ::                                qmix
