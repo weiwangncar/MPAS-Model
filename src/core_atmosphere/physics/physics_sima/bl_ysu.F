@@ -234,7 +234,6 @@ contains
                                                              qc3d_hv     , &
                                                              qi3d_hv     , &
                                                              p3d_hv      , &
-                                                             p3di_hv     , &
                                                              pi3d_hv     , &
                                                              rublten_hv  , &
                                                              rvblten_hv  , &
@@ -246,6 +245,9 @@ contains
                                                              exch_h_hv   , &
                                                              exch_m_hv   , &
                                                              rthraten_hv
+
+   real,                   dimension(its:ite,kts:kte+1)    ::              &
+                                                             p3di_hv
       
    real,                   dimension(its:ite)              ::              &
                                                              psfc_hv     , &
@@ -307,6 +309,12 @@ contains
          end do
       end do
       
+      do k = kts, kte+1
+         do i = its, ite
+            p3di_hv(i,k) = p3di(i,k,j)
+         end do
+      end do
+      
       do k = kts, kte
          do i = its, ite
             u3d_hv(i,k) = u3d(i,k,j)
@@ -316,7 +324,6 @@ contains
             qc3d_hv(i,k) = qc3d(i,k,j)
             qi3d_hv(i,k) = qi3d(i,k,j)
             p3d_hv(i,k) = p3d(i,k,j)
-            p3di_hv(i,k) = p3di(i,k,j)
             pi3d_hv(i,k) = pi3d(i,k,j)
             rublten_hv(i,k) = rublten(i,k,j)
             rvblten_hv(i,k) = rvblten(i,k,j)
@@ -587,7 +594,7 @@ contains
    real,     dimension( its:ite, kts:kte, nmix )                             , &
              intent(inout), optional   ::                             qmixtnp
 !
-   real,     dimension( its:ite, kts:kte )                                   , &
+   real,     dimension( its:ite, kts:kte+1 )                                 , &
              intent(in   )   ::                                          p2di
 !
    real,     dimension( its:ite, kts:kte )                                   , &
@@ -698,8 +705,8 @@ contains
 !
 
    real, dimension( its:ite, kts:kte )     ::                wscalek,wscalek2
-   real, dimension( ims:ime )              ::                           wstar
-   real, dimension( ims:ime )              ::                           delta
+   real, dimension( its:ite )              ::                           wstar
+   real, dimension( its:ite )              ::                           delta
    real, dimension( its:ite, kts:kte )     ::                     xkzml,xkzhl, &
                                                                zfacent,entfac
    real, dimension( its:ite, kts:kte )     ::                            qixl
@@ -718,12 +725,12 @@ contains
                prfac,prfac2,phim8z,radsum,tmp1,templ,rvls,temps,ent_eff,    &
                rcldb,bruptmp,radflux,vconvlim,vconvnew,fluxc,vconvc,vconv
 !topo-corr
-   real,    dimension( ims:ime, kms:kme )    ::                          fric, &
+   real,    dimension( its:ite, kts:kte )    ::                          fric, &
                                                                        tke_ysu,&
                                                                         el_ysu,&
                                                                      shear_ysu,&
                                                                      buoy_ysu
-   real,    dimension( ims:ime )             ::                       pblh_ysu,&
+   real,    dimension( its:ite )             ::                       pblh_ysu,&
                                                                       vconvfx
 
    real,     dimension( kts:kte )   :: dummy1,dummy2,dummy4
