@@ -391,9 +391,7 @@ contains
               ,rthraten=rthraten_hv                                            &
               ,ysu_topdown_pblmix=ysu_topdown_pblmix                           &
               ,ctopo=ctopo_hv,ctopo2=ctopo2_hv                                 &
-              ,ids=ids,ide=ide, jds=jds,jde=jde, kds=kds,kde=kde               &
-              ,ims=ims,ime=ime, jms=jms,jme=jme, kms=kms,kme=kme               &
-              ,its=its,ite=ite, jts=jts,jte=jte, kts=kts,kte=kte   )
+              ,its=its,ite=ite, kts=kts,kte=kte                                )
 !
       !  Assign local data back to full-sized arrays.
       !  Only required for the INTENT(OUT) or INTENT(INOUT) arrays.
@@ -459,7 +457,7 @@ contains
 !
 !-------------------------------------------------------------------------------
 !
-   subroutine bl_ysu_run(j,ux,vx,tx,qvx,qcx,qix,nmix,qmix,p2d,p2di,pi2d,            &
+   subroutine bl_ysu_run(j,ux,vx,tx,qvx,qcx,qix,nmix,qmix,p2d,p2di,pi2d,       &
                   utnp,vtnp,ttnp,qvtnp,qctnp,qitnp,qmixtnp,                    &
                   cp,g,rovcp,rd,rovg,ep1,ep2,karman,xlv,rv,                    &
                   dz8w2d,psfcpa,                                               &
@@ -473,9 +471,7 @@ contains
                   rthraten,                                                    &
                   ysu_topdown_pblmix,                                          &
                   ctopo,ctopo2,                                                &
-                  ids,ide, jds,jde, kds,kde,                                   &
-                  ims,ime, jms,jme, kms,kme,                                   &
-                  its,ite, jts,jte, kts,kte                                    &
+                  its,ite, kts,kte                                             &
                    )
 !-------------------------------------------------------------------------------
    implicit none
@@ -553,9 +549,7 @@ contains
    integer,parameter ::  imvdif = 1
    real,parameter    ::  rcl = 1.0
 !
-   integer,  intent(in   )   ::     ids,ide, jds,jde, kds,kde,                 &
-                                    ims,ime, jms,jme, kms,kme,                 &
-                                    its,ite, jts,jte, kts,kte,                 &
+   integer,  intent(in   )   ::     its,ite, kts,kte,                          &
                                     j
 
    integer,  intent(in)      ::     ysu_topdown_pblmix 
