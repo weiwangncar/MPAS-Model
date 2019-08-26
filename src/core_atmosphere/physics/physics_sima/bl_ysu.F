@@ -166,7 +166,7 @@ contains
                                                                      rqiblten
 !
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
-             intent(inout)   ::                                        exch_h, &
+             intent(out  )   ::                                        exch_h, &
                                                                        exch_m
    real,     dimension( ims:ime, jms:jme )                                   , &
              intent(out  )   ::                                         wstar
@@ -320,8 +320,6 @@ contains
             p3d_hv(i,k) = p3d(i,k,j)
             pi3d_hv(i,k) = pi3d(i,k,j)
             dz8w_hv(i,k) = dz8w(i,k,j)
-            exch_h_hv(i,k) = exch_h(i,k,j)
-            exch_m_hv(i,k) = exch_m(i,k,j)
             rthraten_hv(i,k) = rthraten(i,k,j)
          end do
       end do
@@ -337,7 +335,6 @@ contains
          hfx_hv(i) = hfx(i,j)
          qfx_hv(i) = qfx(i,j)
          br_hv(i) = br(i,j)
-         kpbl2d_hv(i) = kpbl2d(i,j)
          u10_hv(i) = u10(i,j)
          v10_hv(i) = v10(i,j)
          uoce_hv(i) = uoce(i,j)
