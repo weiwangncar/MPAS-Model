@@ -574,7 +574,8 @@
  end subroutine pbl_to_MPAS
  
 !=================================================================================================================
- subroutine driver_pbl(itimestep,configs,mesh,sfc_input,diag_physics,tend_physics,its,ite)
+ subroutine driver_pbl(itimestep,configs,mesh,sfc_input,diag_physics,tend_physics,its,ite, &
+                       errmsg,errflg)
 !=================================================================================================================
 
 !input arguments:
@@ -588,6 +589,11 @@
  type(mpas_pool_type),intent(inout):: sfc_input
  type(mpas_pool_type),intent(inout):: diag_physics
  type(mpas_pool_type),intent(inout):: tend_physics
+
+!out arguments:
+ character(len=*),intent(out):: errmsg
+ integer,         intent(out):: errflg
+
 
 !local pointers:
  logical,pointer:: config_do_restart
@@ -634,6 +640,7 @@
                  rthraten = rthraten_p , u10      = u10_p       , v10      = v10_p      , &
                  ctopo    = ctopo_p    , ctopo2   = ctopo2_p    ,                         &
                  ysu_topdown_pblmix = ysu_pblmix ,                                        &
+                 errmsg   = errmsg     , errflg   = errflg      ,                         &
                  ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde  , &
                  ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme  , &
                  its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte    &

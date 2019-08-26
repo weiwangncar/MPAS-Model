@@ -56,7 +56,8 @@ contains
                   ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
                   ims,ime, jms,jme, kms,kme,                                   &
-                  its,ite, jts,jte, kts,kte                                    &
+                  its,ite, jts,jte, kts,kte,                                   &
+                  errmsg,errflg                                                &
                  )
 !-------------------------------------------------------------------------------
    implicit none
@@ -210,6 +211,9 @@ contains
              optional                                                        , &
              intent(in   )   ::                                         ctopo, &
                                                                        ctopo2
+!
+   character(len=*), intent(out)   ::                                  errmsg
+   integer,          intent(out)   ::                                  errflg
 !local
    integer ::  i,j,k
 
@@ -374,7 +378,8 @@ contains
               ,rthraten=rthraten_hv                                            &
               ,ysu_topdown_pblmix=ysu_topdown_pblmix                           &
               ,ctopo=ctopo_hv,ctopo2=ctopo2_hv                                 &
-              ,its=its,ite=ite, kts=kts,kte=kte                                )
+              ,its=its,ite=ite, kts=kts,kte=kte                                &
+              ,errmsg=errmsg,errflg=errflg                                     )
 !
       !  Assign local data back to full-sized arrays.
       !  Only required for the INTENT(OUT) or INTENT(INOUT) arrays.
@@ -452,7 +457,8 @@ contains
                   rthraten,                                                    &
                   ysu_topdown_pblmix,                                          &
                   ctopo,ctopo2,                                                &
-                  its,ite, kts,kte                                             &
+                  its,ite, kts,kte,                                            &
+                  errmsg,errflg                                                &
                    )
 !-------------------------------------------------------------------------------
    implicit none
@@ -601,6 +607,10 @@ contains
              optional                                                        , &
              intent(in   )   ::                                         ctopo, &
                                                                        ctopo2
+!
+   character(len=*), intent(out)   ::                                  errmsg
+   integer,          intent(out)   ::                                  errflg
+
 !
 ! local vars
 !
@@ -1642,6 +1652,9 @@ contains
    do i = its,ite
      kpbl1d(i) = kpbl(i)
    enddo
+!
+   errmsg = 'bl_ysu_run OK'
+   errflg = 0
 !
    end subroutine bl_ysu_run
 !-------------------------------------------------------------------------------
