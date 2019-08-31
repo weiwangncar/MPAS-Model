@@ -14,7 +14,7 @@
   long_name = x wind
   units = m s-1
   dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
-  type = real | kind = kind_phys | kind = kind_phys
+  type = real | kind = kind_phys
   intent = in
   optional = F
 [vx]
@@ -22,7 +22,7 @@
   long_name = y wind
   units =  m s-1
   dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
-  type = real | kind = kind_phys | kind = kind_phys
+  type = real | kind = kind_phys
   intent = in
   optional = F
 [tx]
@@ -489,10 +489,26 @@
   type = integer
   intent = in
   optional = F
+[kms]
+  standard_name = vertical_interface_start
+  long_name = vertical interface start
+  units = none 
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[kme]
+  standard_name = vertical_interface_end
+  long_name = vertical interface end
+  units = none 
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
-  units = none
+  units = 1
   dimensions = ()
   type = character
   kind = len=*
@@ -512,7 +528,7 @@
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
-  units = none
+  units = 1
   dimensions = ()
   type = character
   kind = len=*
@@ -532,7 +548,7 @@
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
-  units = none
+  units = 1
   dimensions = ()
   type = character
   kind = len=*
