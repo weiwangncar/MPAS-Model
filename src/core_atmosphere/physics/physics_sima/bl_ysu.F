@@ -34,7 +34,21 @@
 !
 !
 module bl_ysu
-use mpas_log
+
+  use mpas_log
+  !USE ccpp_kinds, ONLY: kind_phys
+
+  IMPLICIT NONE
+
+  PUBLIC :: bl_ysu_init
+  PUBLIC :: bl_ysu_run
+  PUBLIC :: bl_ysu_finalize
+
+  PRIVATE :: ysu
+  PRIVATE :: tridi1n
+  PRIVATE :: tridin_ysu
+  PRIVATE :: get_pblh
+
 contains
 !
 !
@@ -42,7 +56,7 @@ contains
 !
    subroutine ysu(u3d,v3d,th3d,t3d,qv3d,qc3d,qi3d,p3d,p3di,pi3d,               &
                   rublten,rvblten,rthblten,                                    &
-                  rqvblten,rqcblten,rqiblten,flag_qi,                          &
+                  rqvblten,rqcblten,rqiblten,flag_qc,flag_qi,                  &
                   cp,g,rovcp,rd,rovg,ep1,ep2,karman,xlv,rv,                    &
                   dz8w,psfc,                                                   &
                   znt,ust,hpbl,psim,psih,                                      &
@@ -56,7 +70,8 @@ contains
                   ctopo,ctopo2,                                                &
                   ids,ide, jds,jde, kds,kde,                                   &
                   ims,ime, jms,jme, kms,kme,                                   &
-                  its,ite, jts,jte, kts,kte                                    &
+                  its,ite, jts,jte, kts,kte,                                   &
+                  errmsg,errflg                                                &
                  )
 !-------------------------------------------------------------------------------
    implicit none
@@ -158,19 +173,20 @@ contains
              intent(in   )   ::                                          p3di
 !
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
-             intent(inout)   ::                                       rublten, &
+             intent(out  )   ::                                       rublten, &
                                                                       rvblten, &
                                                                      rthblten, &
                                                                      rqvblten, &
-                                                                     rqcblten
+                                                                     rqcblten, &
+                                                                     rqiblten
 !
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
-             intent(inout)   ::                                        exch_h, &
+             intent(out  )   ::                                        exch_h, &
                                                                        exch_m
    real,     dimension( ims:ime, jms:jme )                                   , &
-             intent(inout)   ::                                         wstar
+             intent(out  )   ::                                         wstar
    real,     dimension( ims:ime, jms:jme )                                   , &
-             intent(inout)   ::                                         delta
+             intent(out  )   ::                                         delta
    real,     dimension( ims:ime, jms:jme )                                   , &
              intent(inout)   ::                                           u10, &
                                                                           v10
@@ -189,10 +205,11 @@ contains
                                                                          psim, &
                                                                          psih
    real,     dimension( ims:ime, jms:jme )                                   , &
-             intent(inout)   ::                                           znt, &
+             intent(in   )   ::                                           znt, &
                                                                           ust, &
-                                                                         hpbl, &
                                                                           wspd
+   real,     dimension( ims:ime, jms:jme )                                   , &
+             intent(out  )   ::                                          hpbl
 !
    real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
              intent(in   )   ::                                           u3d, &
@@ -200,16 +217,17 @@ contains
 !
    integer,  dimension( ims:ime, jms:jme )                                   , &
              intent(out  )   ::                                        kpbl2d
-   logical,  intent(in)      ::                                       flag_qi
 !
-   real,     dimension( ims:ime, kms:kme, jms:jme )                          , &
-             optional                                                        , &
-             intent(inout)   ::                                       rqiblten
+   logical,  intent(in)      ::                                       flag_qc, &
+                                                                      flag_qi
 !
    real,     dimension( ims:ime, jms:jme )                                   , &
              optional                                                        , &
              intent(in   )   ::                                         ctopo, &
                                                                        ctopo2
+!
+   character(len=*), intent(out)   ::                                  errmsg
+   integer,          intent(out)   ::                                  errflg
 !local
    integer ::  i,j,k
 
@@ -219,9 +237,6 @@ contains
    integer :: n
    real,     dimension ( ims:ime, kms:kme, jms:jme, nmix) ::             qmix
    real,     dimension ( ims:ime, kms:kme, jms:jme, nmix) ::       rqmixblten
-! 
-   logical ::                                                            f_qc, &
-                                                                         f_qi
 
    !  Local tile-sized arrays for contiguous data for bl_ysu_run call.
       
@@ -282,41 +297,17 @@ contains
        do i = its, ite
           n = 1
           qmix(i,k,j,n) = 0.
-          rqmixblten(i,k,j,n) = 0.
           n = 2
           qmix(i,k,j,n) = 0.25
-          rqmixblten(i,k,j,n) = 0.
           n = 3
           qmix(i,k,j,n) = 0.50
-          rqmixblten(i,k,j,n) = 0.
           n = 4
           qmix(i,k,j,n) = 0.75
-          rqmixblten(i,k,j,n) = 0.
           n = 5
           qmix(i,k,j,n) = 1.
-          rqmixblten(i,k,j,n) = 0.
        enddo
    enddo
  enddo
-!
-   f_qc = .true.
-   f_qi = .true.
-!
-!
-!-----initialize vertical mixing tendencies
-!
-   do j = jts, jte
-      do k = kts, kte
-         do i = its, ite
-            rublten(i,k,j)    = 0.
-            rvblten(i,k,j)    = 0.
-            rthblten(i,k,j)   = 0.
-            rqvblten(i,k,j)   = 0.
-            rqcblten(i,k,j)   = 0.
-            rqiblten(i,k,j)   = 0.
-         enddo
-      enddo
-   enddo
 !
    do j = jts,jte
 !
@@ -326,7 +317,6 @@ contains
          do k = kts, kte
             do i = its, ite
                qmix_hv(i,k,n) = qmix(i,k,j,n)
-               rqmixblten_hv(i,k,n) = rqmixblten(i,k,j,n)
             end do
          end do
       end do
@@ -347,15 +337,7 @@ contains
             qi3d_hv(i,k) = qi3d(i,k,j)
             p3d_hv(i,k) = p3d(i,k,j)
             pi3d_hv(i,k) = pi3d(i,k,j)
-            rublten_hv(i,k) = rublten(i,k,j)
-            rvblten_hv(i,k) = rvblten(i,k,j)
-            rthblten_hv(i,k) = rthblten(i,k,j)
-            rqvblten_hv(i,k) = rqvblten(i,k,j)
-            rqcblten_hv(i,k) = rqcblten(i,k,j)
-            rqiblten_hv(i,k) = rqiblten(i,k,j)
             dz8w_hv(i,k) = dz8w(i,k,j)
-            exch_h_hv(i,k) = exch_h(i,k,j)
-            exch_m_hv(i,k) = exch_m(i,k,j)
             rthraten_hv(i,k) = rthraten(i,k,j)
          end do
       end do
@@ -364,17 +346,13 @@ contains
          psfc_hv(i) = psfc(i,j)
          znt_hv(i) = znt(i,j)
          ust_hv(i) = ust(i,j)
-         hpbl_hv(i) = hpbl(i,j)
+         wspd_hv(i) = wspd(i,j)
          psim_hv(i) = psim(i,j)
          psih_hv(i) = psih(i,j)
          xland_hv(i) = xland(i,j)
          hfx_hv(i) = hfx(i,j)
          qfx_hv(i) = qfx(i,j)
-         wspd_hv(i) = wspd(i,j)
          br_hv(i) = br(i,j)
-         kpbl2d_hv(i) = kpbl2d(i,j)
-         wstar_hv(i) = wstar(i,j)
-         delta_hv(i) = delta(i,j)
          u10_hv(i) = u10(i,j)
          v10_hv(i) = v10(i,j)
          uoce_hv(i) = uoce(i,j)
@@ -386,7 +364,7 @@ contains
       call bl_ysu_run(J=j,ux=u3d_hv,vx=v3d_hv                                  &
               ,tx=t3d_hv                                                       &
               ,qvx=qv3d_hv,qcx=qc3d_hv,qix=qi3d_hv                             &
-              ,f_qc=f_qc,f_qi=f_qi                                             &
+              ,f_qc=flag_qc,f_qi=flag_qi                                       &
               ,nmix=nmix,qmix=qmix_hv                                          &
               ,p2d=p3d_hv,p2di=p3di_hv                                         &
               ,pi2d=pi3d_hv                                                    &
@@ -414,7 +392,8 @@ contains
               ,rthraten=rthraten_hv                                            &
               ,ysu_topdown_pblmix=ysu_topdown_pblmix                           &
               ,ctopo=ctopo_hv,ctopo2=ctopo2_hv                                 &
-              ,its=its,ite=ite, kts=kts,kte=kte                                )
+              ,its=its,ite=ite, kts=kts,kte=kte, kms=kms,kme=kme               &
+              ,errmsg=errmsg,errflg=errflg                                     )
 !
       !  Assign local data back to full-sized arrays.
       !  Only required for the INTENT(OUT) or INTENT(INOUT) arrays.
@@ -441,9 +420,6 @@ contains
       end do
       
       do i = its, ite
-         ust(i,j) = ust_hv(i)
-         znt(i,j) = znt_hv(i)
-         wspd(i,j) = wspd_hv(i)
          u10(i,j) = u10_hv(i)
          v10(i,j) = v10_hv(i)
          hpbl(i,j) = hpbl_hv(i)
@@ -480,6 +456,10 @@ contains
 !
 !-------------------------------------------------------------------------------
 !
+
+!> \section arg_table_bl_ysu_run  Argument Table
+!! \htmlinclude arg_table_bl_ysu_run.html
+!!
    subroutine bl_ysu_run(j,ux,vx,tx,qvx,qcx,qix,nmix,qmix,p2d,p2di,pi2d,       &
                   f_qc,f_qi,                                                   &
                   utnp,vtnp,ttnp,qvtnp,qctnp,qitnp,qmixtnp,                    &
@@ -495,7 +475,8 @@ contains
                   rthraten,                                                    &
                   ysu_topdown_pblmix,                                          &
                   ctopo,ctopo2,                                                &
-                  its,ite, kts,kte                                             &
+                  its,ite, kts,kte, kms,kme,                                   &
+                  errmsg,errflg                                                &
                    )
 !-------------------------------------------------------------------------------
    implicit none
@@ -573,8 +554,7 @@ contains
    integer,parameter ::  imvdif = 1
    real,parameter    ::  rcl = 1.0
 !
-   integer,  intent(in   )   ::     its,ite, kts,kte,                          &
-                                    j
+   integer,  intent(in   )   ::     its,ite, kts,kte, kms,kme, j
 
    integer,  intent(in)      ::     ysu_topdown_pblmix 
 !
@@ -600,7 +580,7 @@ contains
              intent(in   )   ::                                          qmix
 !
    real,     dimension( its:ite, kts:kte )                                   , &
-             intent(inout)   ::                                          utnp, &
+             intent(out  )   ::                                          utnp, &
                                                                          vtnp, &
                                                                          ttnp, &
                                                                         qvtnp, &
@@ -608,24 +588,26 @@ contains
                                                                         qitnp
 !
    real,     dimension( its:ite, kts:kte, nmix )                             , &
-             intent(inout)   ::                                       qmixtnp
+             intent(out  )   ::                                       qmixtnp
 !
-   real,     dimension( its:ite, kts:kte+1 )                                 , &
+   real,     dimension( its:ite, kms:kme )                                   , &
              intent(in   )   ::                                          p2di
 !
    real,     dimension( its:ite, kts:kte )                                   , &
              intent(in   )   ::                                           p2d
 !
    real,     dimension( its:ite )                                            , &
-             intent(inout)   ::                                           ust, &
-                                                                         hpbl, &
+             intent(out  )   ::                                          hpbl
+!
+   real,     dimension( its:ite )                                            , &
+             intent(in   )   ::                                           ust, &
                                                                           znt
    real,     dimension( its:ite )                                            , &
              intent(in   )   ::                                         xland, &
                                                                           hfx, &
                                                                           qfx
 !
-   real,     dimension( its:ite ), intent(inout)   ::                    wspd
+   real,     dimension( its:ite ), intent(in   )   ::                    wspd
    real,     dimension( its:ite ), intent(in  )    ::                      br
 !
    real,     dimension( its:ite ), intent(in   )   ::                    psim, &
@@ -643,10 +625,14 @@ contains
              intent(in   )   ::                                         ctopo, &
                                                                        ctopo2
 !
+   character(len=*), intent(out)   ::                                  errmsg
+   integer,          intent(out)   ::                                  errflg
+
+!
 ! local vars
 !
    real,     dimension( its:ite )            ::                           hol
-   real,     dimension( its:ite, kts:kte+1 ) ::                            zq
+   real,     dimension( its:ite, kms:kme )   ::                            zq
 !
    real,     dimension( its:ite, kts:kte )   ::                                &
                                                                thx,thvx,thlix, &
@@ -721,8 +707,8 @@ contains
 !
 
    real, dimension( its:ite, kts:kte )     ::                wscalek,wscalek2
-   real, dimension( its:ite )              ::                           wstar
-   real, dimension( its:ite )              ::                           delta
+   real, dimension( its:ite ), intent(out) ::                           wstar, &
+                                                                        delta
    real, dimension( its:ite, kts:kte )     ::                     xkzml,xkzhl, &
                                                                zfacent,entfac
    real, dimension( its:ite, kts:kte )     ::                            qcxl, &
@@ -751,7 +737,7 @@ contains
                                                                       vconvfx
 
    real,     dimension( kts:kte )   :: dummy1,dummy2,dummy4
-   real,     dimension( kts:kte+1 ) :: dummy3
+   real,     dimension( kms:kme )   :: dummy3
 !
 !-------------------------------------------------------------------------------
 !
@@ -880,7 +866,6 @@ contains
      vfxpbl(i) = 0.0
      hgamu(i)  = 0.0
      hgamv(i)  = 0.0
-     delta(i)  = 0.0
      wstar3_2(i) =  0.0
    enddo
 !
@@ -1402,7 +1387,7 @@ contains
    do k = kte,kts,-1
      do i = its,ite
        ttend = (f1(i,k)-thx(i,k)+300.)*rdt*pi2d(i,k)
-       ttnp(i,k) = ttnp(i,k)+ttend
+       ttnp(i,k) = ttend
        dtsfc(i) = dtsfc(i)+ttend*cont*del(i,k)/pi2d(i,k)
      enddo
    enddo
@@ -1467,7 +1452,7 @@ contains
    do i = its,ite
       do k = kte,kts,-1
          qtend = (f1(i,k)-qvx(i,k))*rdt
-         qvtnp(i,k) = qvtnp(i,k)+qtend
+         qvtnp(i,k) = qtend
          dqsfc(i)   = dqsfc(i)+qtend*conq*del(i,k)
       enddo
    enddo
@@ -1485,7 +1470,7 @@ contains
       do i = its,ite
          do k = kte,kts,-1
             qtend = (f1(i,k)-qcxl(i,k))*rdt
-            qctnp(i,k) = qctnp(i,k)+qtend
+            qctnp(i,k) = qtend
          enddo
       enddo
    endif
@@ -1503,7 +1488,7 @@ contains
       do i = its,ite
          do k = kte,kts,-1
             qtend = (f1(i,k)-qixl(i,k))*rdt
-            qitnp(i,k) = qitnp(i,k)+qtend
+            qitnp(i,k) = qtend
          enddo
       enddo
    endif
@@ -1523,7 +1508,7 @@ contains
          do i = its,ite
             do k = kte,kts,-1
                qtend = (f1(i,k)-qmix(i,k,n))*rdt
-               qmixtnp(i,k,n) = qmixtnp(i,k,n)+qtend
+               qmixtnp(i,k,n) = qtend
             enddo
          enddo
       enddo
@@ -1663,8 +1648,8 @@ contains
      do i = its,ite
        utend = (f1(i,k)-ux(i,k))*rdt
        vtend = (f2(i,k)-vx(i,k))*rdt
-       utnp(i,k) = utnp(i,k)+utend
-       vtnp(i,k) = vtnp(i,k)+vtend
+       utnp(i,k) = utend
+       vtnp(i,k) = vtend
        dusfc(i) = dusfc(i) + utend*conwrc*del(i,k)
        dvsfc(i) = dvsfc(i) + vtend*conwrc*del(i,k)
      enddo
@@ -1685,7 +1670,40 @@ contains
      kpbl1d(i) = kpbl(i)
    enddo
 !
+   errmsg = 'bl_ysu_run OK'
+   errflg = 0
+!
    end subroutine bl_ysu_run
+
+!> \section arg_table_bl_ysu_init  Argument Table
+!! \htmlinclude arg_table_bl_ysu_init.html
+!!
+  subroutine bl_ysu_init (errmsg, errflg)
+
+    character(len=*),        intent(out)   :: errmsg
+    integer,                 intent(out)   :: errflg
+
+    ! This routine currently does nothing
+
+    errmsg = ''
+    errflg = 0
+
+  end subroutine bl_ysu_init
+
+!> \section arg_table_bl_ysu_finalize  Argument Table
+!! \htmlinclude arg_table_bl_ysu_finalize.html
+!!
+  subroutine bl_ysu_finalize (errmsg, errflg)
+
+    character(len=*),        intent(out)   :: errmsg
+    integer,                 intent(out)   :: errflg
+
+    ! This routine currently does nothing
+
+    errmsg = ''
+    errflg = 0
+
+  end subroutine bl_ysu_finalize
 !-------------------------------------------------------------------------------
 !
 !-------------------------------------------------------------------------------
