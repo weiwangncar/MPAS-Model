@@ -850,7 +850,7 @@ module atm_core
       integer :: s, s_n, s_d
       real (kind=RKIND) :: xtime_s
       integer :: ierr
-      
+
       character(len=StrKIND) :: errmsg
       integer :: errflg
 

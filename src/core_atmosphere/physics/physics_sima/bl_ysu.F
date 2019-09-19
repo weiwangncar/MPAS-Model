@@ -239,11 +239,11 @@ contains
    real,     dimension ( ims:ime, kms:kme, jms:jme, nmix) ::       rqmixblten
 
    !  Local tile-sized arrays for contiguous data for bl_ysu_run call.
-      
+
    real,                   dimension(its:ite,kts:kte,nmix) ::              &
                                                              qmix_hv     , &
                                                              rqmixblten_hv
-      
+
    real,                   dimension(its:ite,kts:kte)      ::              &
                                                              u3d_hv      , &
                                                              v3d_hv      , &
@@ -266,7 +266,7 @@ contains
 
    real,                   dimension(its:ite,kts:kte+1)    ::              &
                                                              p3di_hv
-      
+
    real,                   dimension(its:ite)              ::              &
                                                              psfc_hv     , &
                                                              znt_hv      , &
@@ -287,7 +287,7 @@ contains
                                                              voce_hv     , &
                                                              ctopo_hv    , &
                                                              ctopo2_hv
-      
+
    integer,                dimension(its:ite)              ::              &
                                                              kpbl2d_hv
 
@@ -312,7 +312,7 @@ contains
    do j = jts,jte
 !
       !  Assign input data to local tile-sized arrays.
-      
+
       do n = 1, nmix
          do k = kts, kte
             do i = its, ite
@@ -320,13 +320,13 @@ contains
             end do
          end do
       end do
-      
+
       do k = kts, kte+1
          do i = its, ite
             p3di_hv(i,k) = p3di(i,k,j)
          end do
       end do
-      
+
       do k = kts, kte
          do i = its, ite
             u3d_hv(i,k) = u3d(i,k,j)
@@ -341,7 +341,7 @@ contains
             rthraten_hv(i,k) = rthraten(i,k,j)
          end do
       end do
-      
+
       do i = its, ite
          psfc_hv(i) = psfc(i,j)
          znt_hv(i) = znt(i,j)
@@ -397,7 +397,7 @@ contains
 !
       !  Assign local data back to full-sized arrays.
       !  Only required for the INTENT(OUT) or INTENT(INOUT) arrays.
-      
+
       do n = 1, nmix
          do k = kts, kte
             do i = its, ite
@@ -405,7 +405,7 @@ contains
             end do
          end do
       end do
-      
+
       do k = kts, kte
          do i = its, ite
             rublten(i,k,j) = rublten_hv(i,k)
@@ -418,7 +418,7 @@ contains
             exch_m(i,k,j) = exch_m_hv(i,k)
          end do
       end do
-      
+
       do i = its, ite
          u10(i,j) = u10_hv(i)
          v10(i,j) = v10_hv(i)
@@ -1466,7 +1466,7 @@ contains
          enddo
       enddo
       call tridin_ysu(al,ad,cu,r1,au,f1,its,ite,kts,kte,1)
-   
+
       do i = its,ite
          do k = kte,kts,-1
             qtend = (f1(i,k)-qcxl(i,k))*rdt

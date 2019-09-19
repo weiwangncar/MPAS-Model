@@ -632,10 +632,10 @@
                  rovg     = rdg        , ep1      = ep_1        , ep2      = ep_2       , &
                  karman   = karman     , xlv      = xlv         , rv       = R_v        , &
                  znt      = znt_p      , ust      = ust_p       , hpbl     = hpbl_p     , &
-                 psim     = psim_p     , psih     = psih_p      , xland    = xland_p    , & 
+                 psim     = psim_p     , psih     = psih_p      , xland    = xland_p    , &
                  hfx      = hfx_p      , qfx      = qfx_p       , wspd     = wspd_p     , &
                  br       = br_p       , dt       = dt_pbl      , kpbl2d   = kpbl_p     , &
-                 exch_h   = kzh_p      , exch_m   = kzm_p       , wstar    = wstar_p    , & 
+                 exch_h   = kzh_p      , exch_m   = kzm_p       , wstar    = wstar_p    , &
                  delta    = delta_p    , uoce     = uoce_p      , voce     = voce_p     , &
                  rthraten = rthraten_p , u10      = u10_p       , v10      = v10_p      , &
                  ctopo    = ctopo_p    , ctopo2   = ctopo2_p    ,                         &
