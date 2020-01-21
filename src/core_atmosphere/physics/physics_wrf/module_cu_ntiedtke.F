@@ -1,15 +1,3 @@
-!=================================================================================================================
-! copied for implementation in MPAS from WRF version 3.9:
-! modifications made to sourcecode:
-! * used preprocessing option to replace module_model_constants with mpas_atmphys_constants; used preprocessing
-!   option to include the horizontal dependence of the array znu.
-!   Laura D. Fowler (laura@ucar.edu) / 2016-09-19.
-! * added the three corrections available from module_cu_ntiedtke.F available in the WRF github repository Z(not
-!   in the released version WRF 3.8.1.
-!   Laura D. Fowler (laura@ucar.edu) / 2016-10-18.
-! ** Added 3.9 change by WW / 2017-06-26.
-!   Following what's done in MPAS 5, dx is now an array coming into this routine
-!=================================================================================================================
 !-----------------------------------------------------------------------
 !
 !wrf:model_layer:physics
@@ -63,11 +51,11 @@ module module_cu_ntiedtke
    &       cpd=>cp, alv=>xlv, als=>xls, alf=>xlf, g=>gravity
 #else
      use module_model_constants, only:rd=>r_d, rv=>r_v, &
-   &       cpd=>cp, alv=>xlv, als=>xls, alf=>xlf, t13=>Prandtl, g              
+   &       cpd=>cp, alv=>xlv, als=>xls, alf=>xlf, g
 #endif
 
      implicit none
-     real,private :: rcpd,vtmpc1,tmelt,                &
+     real,private :: t13,rcpd,vtmpc1,tmelt,            &
              c1es,c2es,c3les,c3ies,c4les,c4ies,c5les,c5ies,zrg
 #if defined(mpas)
      real,private :: t13
@@ -77,10 +65,7 @@ module module_cu_ntiedtke
      integer,private :: momtrans
 
      parameter(         &
-#if defined(mpas)
-! parameter not present in mpas_atmphy_constants
       t13=1.0/3.0,      &
-#endif
       rcpd=1.0/cpd,     &
       tmelt=273.16,     &
       zrg=1.0/g,        &
@@ -303,7 +288,9 @@ contains
                                         rcs,                            &
                                         rn,                             &
                                         evap,                           &
-                                        heatflux
+                                        heatflux,                       &
+                                        dx2d
+
       integer  , dimension(its:ite) ::  slimsk
 
 
@@ -390,6 +377,10 @@ contains
         slimsk(i)=int(abs(xland(i,j)-2.))
       enddo
 
+      do i=its,ite
+         dx2d(i) = dx(i,j)
+      enddo
+
       do k=kts,kte
         kp=k+1
         do i=its,ite
@@ -438,7 +429,7 @@ contains
 !
 !########################################################################
       call tiecnvn(u1,v1,t1,q1,q2,q3,q1b,t1b,ghtl,ghti,omg,prsl,prsi,evap,heatflux,  &
-                  rn,slimsk,im,kx,kx1,delt,dx)
+                  rn,slimsk,im,kx,kx1,delt,dx2d)
 
       do i=its,ite
          raincv(i,j)=rn(i)/stepcu
@@ -3924,4 +3915,3 @@ contains
       end function  foeldcpm
 
 end module module_cu_ntiedtke
-                                                                                         
