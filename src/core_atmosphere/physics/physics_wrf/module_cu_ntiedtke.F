@@ -361,6 +361,52 @@ contains
 
       integer  ::                   lq, km1
 !
+! more local arrays from tiecnvn
+!
+      real     , dimension(its:ite, kts:kte) ::                         &
+                                       pum1 ,                           &
+                                       pvm1 ,                           &
+                                        ztt ,                           &
+                                        zqq ,                           &
+                                       ptte ,                           &
+                                       pqte ,                           &
+                                       pcte ,                           &
+                                       pvom ,                           &
+                                       pvol ,                           &
+                                      pverv ,                           &
+                                       pgeo
+
+      real     , dimension(its:ite, kts:kte+1) ::                       &
+                                      pgeoh
+
+      real     , dimension(its:ite) ::                                  &
+                                      prsfc,                            &
+                                      pssfc,                            &
+                                      zrain
+
+      real     , dimension(its:ite, kts:kte) ::                         &
+                                        ztp1 ,                          &
+                                        zqp1 ,                          &
+                                         ztu ,                          &
+                                         zqu ,                          &
+                                         zlu ,                          &
+                                       zlude ,                          &
+                                        zmfu ,                          &
+                                        zmfd ,                          &
+                                       zqsat
+
+      integer  , dimension(its:ite) ::                                  &
+                                       icbot,                           &
+                                       ictop,                           &
+                                       ktype
+
+      logical  , dimension(its:ite) :: locum
+
+      real     :: fliq,fice,ztc,zalf,tt
+      real     :: ztpp1
+      real     :: zew,zqs,zcor
+
+!
 !-----------------------------------------------------------------------
 !
 !***  check to see if this is a convection timestep
@@ -462,8 +508,101 @@ contains
 !########################################################################
 !     call tiecnvn(u1,v1,t1,q1,q2,q3,q1b,t1b,ghtl,ghti,omg,prsl,prsi,evap,heatflux,  &
 !                 rn,slimsk,im,kx,kx1,delt,dx2d)
-      call tiecnvn(pu,pv,pt,pqv,pqc,pqi,pqvf,ptf,poz,pzz,pomg,pap,paph,pqhfl,phhfl,  &
-                  zprecc,lndj,lq,km,km1,ztmst,dx2d)
+!     call tiecnvn(pu,pv,pt,pqv,pqc,pqi,pqvf,ptf,poz,pzz,pomg,pap,paph,pqhfl,phhfl,  &
+!                 zprecc,lndj,lq,km,km1,ztmst,dx2d)
+
+! port code from tiecnvn
+!
+!  masv flux diagnostics.
+!
+!     do j=1,lq
+      do i=its,ite
+        zrain(i)=0.0
+        locum(i)=.false.
+        prsfc(i)=0.0
+        pssfc(i)=0.0
+        pgeoh(i,km1)=g*pzz(i,km1)
+      end do
+!
+!     convert model variables for mflux scheme
+!
+      do k=kts,kte
+!       do j=1,lq
+        do i=its,ite
+          pcte(i,k)=0.0
+          pvom(i,k)=0.0
+          pvol(i,k)=0.0
+          ztp1(i,k)=pt(i,k)
+          zqp1(i,k)=pqv(i,k)/(1.0+pqv(i,k))
+          pum1(i,k)=pu(i,k)
+          pvm1(i,k)=pv(i,k)
+          pverv(i,k)=pomg(i,k)
+          pgeo(i,k)=g*poz(i,k)
+          pgeoh(i,k)=g*pzz(i,k)
+          tt=ztp1(i,k)
+          zew  = foeewm(tt)
+          zqs  = zew/pap(i,k)
+          zqs  = min(0.5,zqs)
+          zcor = 1./(1.-vtmpc1*zqs)
+          zqsat(i,k)=zqs*zcor
+          pqte(i,k)=pqvf(i,k)
+          zqq(i,k) =pqte(i,k)
+          ptte(i,k)=ptf(i,k)
+          ztt(i,k) =ptte(i,k)
+        end do
+      end do
+!
+!-----------------------------------------------------------------------
+!*    2.     call 'cumastrn'(master-routine for cumulus parameterization)
+!
+      call cumastrn        &
+     &    (lq,       km,       km1,      km-1,    ztp1, &
+     &     zqp1,     pum1,     pvm1,     pverv,   zqsat,&
+     &     pqhfl,    ztmst,    pap,      paph,    pgeo, &
+     &     ptte,     pqte,     pvom,     pvol,    prsfc,&
+     &     pssfc,    locum,                             &
+     &     ktype,    icbot,    ictop,    ztu,     zqu,  &
+     &     zlu,      zlude,    zmfu,     zmfd,    zrain,&
+     &     pcte,     phhfl,    lndj,     pgeoh,   dx2d)
+!
+!     to include the cloud water and cloud ice detrained from convection
+!
+      do k=kts,kte
+!     do j=1,lq
+      do i=its,ite
+      if(pcte(i,k).gt.0.) then
+        fliq=foealfa(ztp1(i,k))
+        fice=1.0-fliq
+        pqc(i,k)=pqc(i,k)+fliq*pcte(i,k)*ztmst
+        pqi(i,k)=pqi(i,k)+fice*pcte(i,k)*ztmst
+      endif
+      end do
+      end do
+!
+      do k=kts,kte
+!       do j=1,lq
+        do i=its,ite
+          pt(i,k)=  ztp1(i,k)+(ptte(i,k)-ztt(i,k))*ztmst
+          zqp1(i,k)=zqp1(i,k)+(pqte(i,k)-zqq(i,k))*ztmst
+          pqv(i,k)=zqp1(i,k)/(1.0-zqp1(i,k))
+        end do
+      end do
+
+!     do j=1,lq
+      do i=its,ite
+        zprecc(i)=amax1(0.0,(prsfc(i)+pssfc(i))*ztmst)
+      end do
+
+      if (lmfdudv) then
+        do k=kts,kte
+!         do j=1,lq
+          do i=its,ite
+            pu(i,k)=pu(i,k)+pvom(i,k)*ztmst
+            pv(i,k)=pv(i,k)+pvol(i,k)*ztmst
+          end do
+        end do
+      endif
+! end of tiecnvn code
 
       do i=its,ite
          raincv(i,j)=zprecc(i)/stepcu
