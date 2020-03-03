@@ -350,30 +350,16 @@ contains
                                         pzz
 
       real     , dimension(its:ite) ::                                  &
-                                      pqhfl,                            &
-                                      phhfl,                            &
                                      zprecc
-
-      integer  , dimension(its:ite) ::                                  &
-                                       lndj
-
-      real     ::                     ztmst
-
-      integer  ::                   lq, km1
 !
 ! more local arrays from tiecnvn
 !
       real     , dimension(its:ite, kts:kte) ::                         &
-                                       pum1 ,                           &
-                                       pvm1 ,                           &
                                         ztt ,                           &
                                         zqq ,                           &
-                                       ptte ,                           &
-                                       pqte ,                           &
                                        pcte ,                           &
                                        pvom ,                           &
                                        pvol ,                           &
-                                      pverv ,                           &
                                        pgeo
 
       real     , dimension(its:ite, kts:kte+1) ::                       &
@@ -385,15 +371,14 @@ contains
                                       zrain
 
       real     , dimension(its:ite, kts:kte) ::                         &
-                                        ztp1 ,                          &
-                                        zqp1 ,                          &
+                                          pq ,                          &
                                          ztu ,                          &
                                          zqu ,                          &
                                          zlu ,                          &
                                        zlude ,                          &
                                         zmfu ,                          &
                                         zmfd ,                          &
-                                       zqsat
+                                       pqsat
 
       integer  , dimension(its:ite) ::                                  &
                                        icbot,                           &
@@ -424,11 +409,6 @@ contains
       delt=dt*stepcu
       rdelt=1./delt
 
-      ztmst = delt
-      lq    = im
-      km    = kx
-      km1   = kx1
-
 !-------------  j loop (outer) --------------------------------------------------
 
    do j=jts,jte
@@ -452,7 +432,7 @@ contains
 
 ! --------------- end compute zi and zl -------------------------------------
       do i=its,ite
-        lndj(i)=int(abs(xland(i,j)-2.))
+        slimsk(i)=int(abs(xland(i,j)-2.))
       enddo
 
       do i=its,ite
@@ -501,8 +481,8 @@ contains
       enddo
 !
       do i=its,ite
-        pqhfl(i) = qfx(i,j)
-        phhfl(i) = hfx(i,j)
+        evap(i) = qfx(i,j)
+        heatflux(i) = hfx(i,j)
       enddo
 !
 !########################################################################
@@ -515,19 +495,17 @@ contains
 !
 !  masv flux diagnostics.
 !
-!     do j=1,lq
       do i=its,ite
         zrain(i)=0.0
         locum(i)=.false.
         prsfc(i)=0.0
         pssfc(i)=0.0
-        pgeoh(i,km1)=g*pzz(i,km1)
+        pgeoh(i,kx1)=g*pzz(i,kx1)
       end do
 !
 !     convert model variables for mflux scheme
 !
       do k=kts,kte
-!       do j=1,lq
         do i=its,ite
           pcte(i,k)=0.0
           pvom(i,k)=0.0
@@ -537,23 +515,17 @@ contains
 
       do k=kts,kte
         do i=its,ite
-          ztp1(i,k)=pt(i,k)
-          zqp1(i,k)=pqv(i,k)/(1.0+pqv(i,k))
-          pum1(i,k)=pu(i,k)
-          pvm1(i,k)=pv(i,k)
-          pverv(i,k)=pomg(i,k)
+          pq(i,k)=pqv(i,k)/(1.0+pqv(i,k))
           pgeo(i,k)=g*poz(i,k)
           pgeoh(i,k)=g*pzz(i,k)
-          tt=ztp1(i,k)
+          tt=pt(i,k)
           zew  = foeewm(tt)
           zqs  = zew/pap(i,k)
           zqs  = min(0.5,zqs)
           zcor = 1./(1.-vtmpc1*zqs)
-          zqsat(i,k)=zqs*zcor
-          pqte(i,k)=pqvf(i,k)
-          zqq(i,k) =pqte(i,k)
-          ptte(i,k)=ptf(i,k)
-          ztt(i,k) =ptte(i,k)
+          pqsat(i,k)=zqs*zcor
+          zqq(i,k) =pqvf(i,k)
+          ztt(i,k) =ptf(i,k)
         end do
       end do
 !
@@ -561,14 +533,14 @@ contains
 !*    2.     call 'cumastrn'(master-routine for cumulus parameterization)
 !
       call cumastrn        &
-     &    (klon=lq,  klev=km,  klevp1=km1,  klevm1=km-1,  pten=ztp1, &
-     &     pqen=zqp1, puen=pum1,  pven=pvm1, pverv=pverv, pqsen=zqsat,&
-     &     pqhfl=pqhfl,  ztmst=ztmst,  pap=pap,  paph=paph,  pgeo=pgeo, &
-     &     ptte=ptte,  pqte=pqte,  pvom=pvom,  pvol=pvol,  prsfc=prsfc,&
+     &    (klon=im,  klev=kx,  klevp1=kx1,  klevm1=kx-1,  pten=pt, &
+     &     pqen=pq, puen=pu,  pven=pv, pverv=pomg, pqsen=pqsat,&
+     &     pqhfl=evap,  ztmst=delt,  pap=pap,  paph=paph,  pgeo=pgeo, &
+     &     ptte=ptf,  pqte=pqvf,  pvom=pvom,  pvol=pvol,  prsfc=prsfc,&
      &     pssfc=pssfc,  ldcum=locum,                             &
      &     ktype=ktype,  kcbot=icbot,  kctop=ictop,  ptu=ztu,  pqu=zqu,  &
      &     plu=zlu,   plude=zlude,  pmfu=zmfu,  pmfd=zmfd,  prain=zrain,&
-     &     pcte=pcte,  phhfl=phhfl,  lndj=lndj,  zgeoh=pgeoh,  dx=dx2d)
+     &     pcte=pcte,  phhfl=heatflux,  lndj=slimsk,  zgeoh=pgeoh,  dx=dx2d)
 !
 !     to include the cloud water and cloud ice detrained from convection
 !
@@ -576,10 +548,10 @@ contains
 !     do j=1,lq
       do i=its,ite
       if(pcte(i,k).gt.0.) then
-        fliq=foealfa(ztp1(i,k))
+        fliq=foealfa(pt(i,k))
         fice=1.0-fliq
-        pqc(i,k)=pqc(i,k)+fliq*pcte(i,k)*ztmst
-        pqi(i,k)=pqi(i,k)+fice*pcte(i,k)*ztmst
+        pqc(i,k)=pqc(i,k)+fliq*pcte(i,k)*delt
+        pqi(i,k)=pqi(i,k)+fice*pcte(i,k)*delt
       endif
       end do
       end do
@@ -587,23 +559,23 @@ contains
       do k=kts,kte
 !       do j=1,lq
         do i=its,ite
-          pt(i,k)=  ztp1(i,k)+(ptte(i,k)-ztt(i,k))*ztmst
-          zqp1(i,k)=zqp1(i,k)+(pqte(i,k)-zqq(i,k))*ztmst
-          pqv(i,k)=zqp1(i,k)/(1.0-zqp1(i,k))
+          pt(i,k)=pt(i,k)+(ptf(i,k)-ztt(i,k))*delt
+          pq(i,k)=pq(i,k)+(pqvf(i,k)-zqq(i,k))*delt
+          pqv(i,k)=pq(i,k)/(1.0-pq(i,k))
         end do
       end do
 
 !     do j=1,lq
       do i=its,ite
-        zprecc(i)=amax1(0.0,(prsfc(i)+pssfc(i))*ztmst)
+        zprecc(i)=amax1(0.0,(prsfc(i)+pssfc(i))*delt)
       end do
 
       if (lmfdudv) then
         do k=kts,kte
 !         do j=1,lq
           do i=its,ite
-            pu(i,k)=pu(i,k)+pvom(i,k)*ztmst
-            pv(i,k)=pv(i,k)+pvol(i,k)*ztmst
+            pu(i,k)=pu(i,k)+pvom(i,k)*delt
+            pv(i,k)=pv(i,k)+pvol(i,k)*delt
           end do
         end do
       endif
