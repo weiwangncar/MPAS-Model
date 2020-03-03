@@ -247,14 +247,14 @@ contains
                                         u3d,                            &
                                         v3d,                            &
                                         w
-      real,    dimension(ims:ime, jms:jme) ::                           &
+      real,    dimension(ims:ime, jms:jme), intent(in) ::               &
                                         qfx,                            &
                                         hfx                            
 
 !--------------------------- optional vars ----------------------------
 
       real, dimension(ims:ime, kms:kme, jms:jme),                       &
-               optional, intent(inout) ::                               &
+               optional, intent(out) ::                                 &
                                         rqccuten,                       &
                                         rqicuten,                       &
                                         rqvcuten,                       &
