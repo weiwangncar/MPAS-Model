@@ -532,6 +532,11 @@ contains
           pcte(i,k)=0.0
           pvom(i,k)=0.0
           pvol(i,k)=0.0
+        end do
+      end do
+
+      do k=kts,kte
+        do i=its,ite
           ztp1(i,k)=pt(i,k)
           zqp1(i,k)=pqv(i,k)/(1.0+pqv(i,k))
           pum1(i,k)=pu(i,k)
@@ -556,14 +561,14 @@ contains
 !*    2.     call 'cumastrn'(master-routine for cumulus parameterization)
 !
       call cumastrn        &
-     &    (lq,       km,       km1,      km-1,    ztp1, &
-     &     zqp1,     pum1,     pvm1,     pverv,   zqsat,&
-     &     pqhfl,    ztmst,    pap,      paph,    pgeo, &
-     &     ptte,     pqte,     pvom,     pvol,    prsfc,&
-     &     pssfc,    locum,                             &
-     &     ktype,    icbot,    ictop,    ztu,     zqu,  &
-     &     zlu,      zlude,    zmfu,     zmfd,    zrain,&
-     &     pcte,     phhfl,    lndj,     pgeoh,   dx2d)
+     &    (klon=lq,  klev=km,  klevp1=km1,  klevm1=km-1,  pten=ztp1, &
+     &     pqen=zqp1, puen=pum1,  pven=pvm1, pverv=pverv, pqsen=zqsat,&
+     &     pqhfl=pqhfl,  ztmst=ztmst,  pap=pap,  paph=paph,  pgeo=pgeo, &
+     &     ptte=ptte,  pqte=pqte,  pvom=pvom,  pvol=pvol,  prsfc=prsfc,&
+     &     pssfc=pssfc,  ldcum=locum,                             &
+     &     ktype=ktype,  kcbot=icbot,  kctop=ictop,  ptu=ztu,  pqu=zqu,  &
+     &     plu=zlu,   plude=zlude,  pmfu=zmfu,  pmfd=zmfd,  prain=zrain,&
+     &     pcte=pcte,  phhfl=phhfl,  lndj=lndj,  zgeoh=pgeoh,  dx=dx2d)
 !
 !     to include the cloud water and cloud ice detrained from convection
 !
