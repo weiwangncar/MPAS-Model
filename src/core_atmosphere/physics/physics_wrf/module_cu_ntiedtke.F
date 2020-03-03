@@ -269,7 +269,7 @@ contains
 ! to determine at run-time whether a particular tracer is in
 ! use or not.
 !
-     logical, optional ::                                      &
+     logical, optional ::                                    &
                                                    f_qv      &
                                                   ,f_qc      &
                                                   ,f_qr      &
@@ -329,12 +329,42 @@ contains
 
 !-------other local variables----
       integer                      :: zz, pp
-!-----------------------------------------------------------------------
 !
+!------- new local variables ----
+!
+      real     , dimension(its:ite, kts:kte) ::                         &
+                                       pomg,                            &
+                                        pap,                            &
+                                        pqv,                            &
+                                        pqc,                            &
+                                        pqi,                            &
+                                       pqvf,                            &
+                                        ptf,                            &
+                                         pt,                            &
+                                         pu,                            &
+                                         pv,                            &
+                                        poz
+
+      real     , dimension(its:ite, kts:kte+1) ::                       &
+                                       paph,                            &
+                                        pzz
+
+      real     , dimension(its:ite) ::                                  &
+                                      pqhfl,                            &
+                                      phhfl,                            &
+                                     zprecc
+
+      integer  , dimension(its:ite) ::                                  &
+                                       lndj
+
+      real     ::                     ztmst
+
+      integer  ::                   lq, km1
+!
+!-----------------------------------------------------------------------
 !
 !***  check to see if this is a convection timestep
 !
-
 !-----------------------------------------------------------------------
       do j=jts,jte
          do i=its,ite
@@ -347,6 +377,11 @@ contains
       kx1=kx+1
       delt=dt*stepcu
       rdelt=1./delt
+
+      ztmst = delt
+      lq    = im
+      km    = kx
+      km1   = kx1
 
 !-------------  j loop (outer) --------------------------------------------------
 
@@ -371,7 +406,7 @@ contains
 
 ! --------------- end compute zi and zl -------------------------------------
       do i=its,ite
-        slimsk(i)=int(abs(xland(i,j)-2.))
+        lndj(i)=int(abs(xland(i,j)-2.))
       enddo
 
       do i=its,ite
@@ -389,22 +424,22 @@ contains
       do k=kts,kte
         zz = kte-pp
         do i=its,ite
-          u1(i,zz)=u3d(i,k,j)
-          v1(i,zz)=v3d(i,k,j)
-          t1(i,zz)=t3d(i,k,j)
-          q1(i,zz)=qv3d(i,k,j)
+          pu(i,zz)=u3d(i,k,j)
+          pv(i,zz)=v3d(i,k,j)
+          pt(i,zz)=t3d(i,k,j)
+         pqv(i,zz)=qv3d(i,k,j)
           if(itimestep == 1) then
-             q1b(i,zz)=0.
-             t1b(i,zz)=0.
+             pqvf(i,zz)=0.
+             ptf(i,zz)=0.
           else
-             q1b(i,zz)=qvften(i,k,j)
-             t1b(i,zz)=thften(i,k,j)
+             pqvf(i,zz)=qvften(i,k,j)
+             ptf(i,zz)=thften(i,k,j)
           endif
-          q2(i,zz)=qc3d(i,k,j)
-          q3(i,zz)=qi3d(i,k,j)
-          omg(i,zz)=dot(i,k)
-          ghtl(i,zz)=zl(i,k)
-          prsl(i,zz) = pcps(i,k,j)
+          pqc(i,zz)=qc3d(i,k,j)
+          pqi(i,zz)=qi3d(i,k,j)
+          pomg(i,zz)=dot(i,k)
+          poz(i,zz)=zl(i,k)
+          pap(i,zz)=pcps(i,k,j)
         enddo
         pp = pp + 1
       enddo
@@ -413,34 +448,36 @@ contains
       do k=kts,kte+1
         zz = kte+1-pp
         do i=its,ite
-          ghti(i,zz) = zi(i,k)
-          prsi(i,zz) = p8w(i,k,j) 
+          pzz(i,zz) = zi(i,k)
+          paph(i,zz) = p8w(i,k,j) 
         enddo
         pp = pp + 1
       enddo
 !
       do i=its,ite
-        evap(i)    = qfx(i,j)
-        heatflux(i)= hfx(i,j)
+        pqhfl(i) = qfx(i,j)
+        phhfl(i) = hfx(i,j)
       enddo
 !
 !########################################################################
-      call tiecnvn(u1,v1,t1,q1,q2,q3,q1b,t1b,ghtl,ghti,omg,prsl,prsi,evap,heatflux,  &
-                  rn,slimsk,im,kx,kx1,delt,dx2d)
+!     call tiecnvn(u1,v1,t1,q1,q2,q3,q1b,t1b,ghtl,ghti,omg,prsl,prsi,evap,heatflux,  &
+!                 rn,slimsk,im,kx,kx1,delt,dx2d)
+      call tiecnvn(pu,pv,pt,pqv,pqc,pqi,pqvf,ptf,poz,pzz,pomg,pap,paph,pqhfl,phhfl,  &
+                  zprecc,lndj,lq,km,km1,ztmst,dx2d)
 
       do i=its,ite
-         raincv(i,j)=rn(i)/stepcu
-         pratec(i,j)=rn(i)/(stepcu * dt)
+         raincv(i,j)=zprecc(i)/stepcu
+         pratec(i,j)=zprecc(i)/(stepcu * dt)
       enddo
 
       pp = 0
       do k=kts,kte
         zz = kte-pp
         do i=its,ite
-          rthcuten(i,k,j)=(t1(i,zz)-t3d(i,k,j))/pi3d(i,k,j)*rdelt
-          rqvcuten(i,k,j)=(q1(i,zz)-qv3d(i,k,j))*rdelt
-          rucuten(i,k,j) =(u1(i,zz)-u3d(i,k,j))*rdelt
-          rvcuten(i,k,j) =(v1(i,zz)-v3d(i,k,j))*rdelt
+          rthcuten(i,k,j)=(pt(i,zz)-t3d(i,k,j))/pi3d(i,k,j)*rdelt
+          rqvcuten(i,k,j)=(pqv(i,zz)-qv3d(i,k,j))*rdelt
+          rucuten(i,k,j) =(pu(i,zz)-u3d(i,k,j))*rdelt
+          rvcuten(i,k,j) =(pv(i,zz)-v3d(i,k,j))*rdelt
         enddo
         pp = pp + 1
       enddo
@@ -451,7 +488,7 @@ contains
           do k=kts,kte
             zz = kte-pp
             do i=its,ite
-              rqccuten(i,k,j)=(q2(i,zz)-qc3d(i,k,j))*rdelt
+              rqccuten(i,k,j)=(pqc(i,zz)-qc3d(i,k,j))*rdelt
             enddo
             pp = pp + 1
           enddo
@@ -464,15 +501,15 @@ contains
           do k=kts,kte
             zz = kte-pp
             do i=its,ite
-              rqicuten(i,k,j)=(q3(i,zz)-qi3d(i,k,j))*rdelt
+              rqicuten(i,k,j)=(pqi(i,zz)-qi3d(i,k,j))*rdelt
             enddo
             pp = pp + 1
           enddo
         endif
       endif
 
-
    enddo
+!  end of J loop
 
    end subroutine cu_ntiedtke
 
