@@ -2,18 +2,18 @@
 !
 !wrf:model_layer:physics
 !
-!####################tiedtke scheme#########################
+!#################### tiedtke scheme #########################
+!    original:
 !    m.tiedtke      e.c.m.w.f.      1989 
 !    j.morcrette                    1992
 !--------------------------------------------    
 !    modifications
-!    C. zhang & Yuqing Wang         2011-2017
+!    C. zhang & Yuqing Wang         2011-2017, University of Hawaii
 !
-!   modified from IPRC IRAM - yuqing wang, university of hawaii
+!    wrf implementation is modified from IPRC IRAM - Yuqing Wang
 !               & ICTP REGCM4.4
 !
-!   The current version is stable.  There are many updates to the old Tiedtke scheme (cu_physics=6)
-!   update notes:
+!    There are many updates to the old Tiedtke scheme (cu_physics=6):
 !        the new Tiedtke scheme is similar to the Tiedtke scheme used in REGCM4 and ECMWF cy40r1.
 !        the major differences to the old Tiedtke (cu_physics=6) scheme are,
 !        (a) New trigger functions for deep and shallow convections (Jakob and Siebesma 2003;
@@ -26,26 +26,28 @@
 !        (f) Different way to include cloud scale pressure gradients (Gregory et al. 1997;
 !            Wu and Yanai 1994)
 !
-!   other refenrence: tiedtke (1989, mwr, 117, 1779-1800)
-!                     IFS documentation - cy33r1, cy37r2, cy38r1, cy40r1
+!    Other refenrence: 
+!        tiedtke (1989, mwr, 117, 1779-1800)
+!        IFS documentation - cy33r1, cy37r2, cy38r1, cy40r1
 !
 !===========================================================
-!  Note for climate simulation of Tropical Cyclones
-!  This version of Tiedtke scheme was tested with YSU PBL scheme, RRTMG radation
-!  schemes, and WSM6 microphysics schemes, at horizontal resolution around 20 km
-!  Set: momtrans = 2. 
-!       pgcoef   = 0.7 to 1.0 is good depends on the basin 
+!  Note for climate simulation of tropical cyclones:
+!    This version of Tiedtke scheme was tested with YSU PBL, RRTMG radation,
+!    and WSM6 microphysics schemes, at horizontal resolution around 20 km
+!    Set: momtrans = 2. 
+!       pgcoef   = 0.7 to 1.0 is good depending on the basin 
 !       nonequil = .false.
 !===========================================================
-!  Note for the diurnal simulation of precipitaton
-!  When nonequil = .true., the CAPE is relaxed toward to a value from PBL
-!  It can improve the diurnal precipitation over land. 
+!  Note for the diurnal simulation of precipitaton:
+!    When nonequil = .true., the CAPE is relaxed toward to a value from PBL
+!    It can improve the diurnal precipitation over land. 
 !===========================================================
 !###########################################################
 
 module module_cu_ntiedtke
 
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! USE ccpp_kinds, ONLY: kind_phys
+ 
 #if defined(mpas)
      use mpas_atmphys_constants, only: rd=>R_d, rv=>R_v, &
    &       cpd=>cp, alv=>xlv, als=>xls, alf=>xlf, g=>gravity
@@ -55,6 +57,24 @@ module module_cu_ntiedtke
 #endif
 
      implicit none
+
+!    PUBLIC :: cu_ntiedtke_init
+!    PUBLIC :: cu_ntiedtke_run
+!    PUBLIC :: cu_ntiedtke_finalize
+     PUBLIC :: cu_ntiedtke
+
+     PRIVATE :: cuinin
+     PRIVATE :: cutypen
+     PRIVATE :: cuascn
+     PRIVATE :: cudlfsn
+     PRIVATE :: cuddrafn
+     PRIVATE :: cuflxn
+     PRIVATE :: cudtdqn
+     PRIVATE :: cududvn
+     PRIVATE :: cuadjtqn
+     PRIVATE :: cubasmcn
+     PRIVATE :: cuentrn
+
      real,private :: t13,rcpd,vtmpc1,tmelt,            &
              c1es,c2es,c3les,c3ies,c4les,c4ies,c5les,c5ies,zrg
 
@@ -106,40 +126,42 @@ module module_cu_ntiedtke
       parameter(cmfdeps = 0.30)
 
 !     zdnoprc:   deep cloud is thicker than this height (Unit:Pa)
+!     -------
 !
       parameter(zdnoprc = 2.0e4)
-!     -------
 !   
 !     cprcon:    coefficient from cloud water to rain water
+!     -------
 !   
       parameter(cprcon = 1.4e-3)
-!     -------
 !
 !     momtrans: momentum transport method
 !     ( 1 = IFS40r1 method; 2 = new method )
+!     -------
 !
       parameter(momtrans = 2 )
-!     -------
 !
 !     coefficient for pressure gradient intensity
 !     (0.7 - 1.0 is recommended in this vesion of Tiedtke scheme) 
-      parameter(pgcoef=0.7)
 !     -------
 !
-      logical :: nonequil
+      parameter(pgcoef=0.7)
+!
 !     nonequil: representing equilibrium and nonequilibrium convection
 !     ( .false. [equilibrium: removing all CAPE]; .true. [nonequilibrium: relaxing CAPE toward CAPE from PBL]. 
 !       Ref. Bechtold et al. 2014 JAS )
-! 
+!     --------
+!
+      logical :: nonequil
       parameter(nonequil = .true. )
 !
-!--------------------
 !     switches for deep, mid, shallow convections, downdraft, and momentum transport
-!     ------------------
+!     --------
+!
       logical :: lmfpen,lmfmid,lmfscv,lmfdd,lmfdudv
       parameter(lmfpen=.true.,lmfmid=.true.,lmfscv=.true.,lmfdd=.true.,lmfdudv=.true.)
 !--------------------
-!#################### end of variables definition##########################
+!#################### end of variables definition ######################
 !-----------------------------------------------------------------------
 !
 contains
@@ -173,21 +195,21 @@ contains
 !-- pi3d        3d exner function (dimensionless)
 !-- qvften      3d total advective + PBL moisture tendency (kg kg-1 s-1)
 !-- thften      3d total advective + PBL + radiative temperature tendency (k s-1)
-!-- rthcuten      theta tendency due to 
-!                 cumulus scheme precipitation (k/s)
-!-- rucuten       u wind tendency due to 
-!                 cumulus scheme precipitation (k/s)
-!-- rvcuten       v wind tendency due to 
-!                 cumulus scheme precipitation (k/s)
-!-- rqvcuten      qv tendency due to 
-!                 cumulus scheme precipitation (kg/kg/s)
-!-- rqccuten      qc tendency due to 
-!                 cumulus scheme precipitation (kg/kg/s)
-!-- rqicuten      qi tendency due to 
-!                 cumulus scheme precipitation (kg/kg/s)
-!-- rainc         accumulated total cumulus scheme precipitation (mm)
-!-- raincv        cumulus scheme precipitation (mm)
-!-- pratec        precipitiation rate from cumulus scheme (mm/s)
+!-- rthcuten    theta tendency due to 
+!               cumulus scheme precipitation (k/s)
+!-- rucuten     u wind tendency due to 
+!               cumulus scheme precipitation (k/s)
+!-- rvcuten     v wind tendency due to 
+!               cumulus scheme precipitation (k/s)
+!-- rqvcuten    qv tendency due to 
+!               cumulus scheme precipitation (kg/kg/s)
+!-- rqccuten    qc tendency due to 
+!               cumulus scheme precipitation (kg/kg/s)
+!-- rqicuten    qi tendency due to 
+!               cumulus scheme precipitation (kg/kg/s)
+!-- rainc       accumulated total cumulus scheme precipitation (mm)
+!-- raincv      cumulus scheme precipitation (mm)
+!-- pratec      precipitiation rate from cumulus scheme (mm/s)
 !-- dz8w        dz between full levels (m)
 !-- qfx         upward moisture flux at the surface (kg/m^2/s)
 !-- hfx         upward heat flux at the surface (w/m^2) 
@@ -211,6 +233,7 @@ contains
 !-- kts         start index for k in tile
 !-- kte         end index for k in tile
 !-------------------------------------------------------------------
+
       integer, intent(in) ::            ids,ide, jds,jde, kds,kde,      &
                                         ims,ime, jms,jme, kms,kme,      &
                                         its,ite, jts,jte, kts,kte,      &
@@ -231,7 +254,6 @@ contains
       logical, dimension(ims:ime,jms:jme), intent(inout) ::             &
                                         cu_act_flag
 
-
       real,    dimension(ims:ime, kms:kme, jms:jme), intent(in) ::      &
                                         dz8w,                           &
                                         pcps,                           &
@@ -247,6 +269,7 @@ contains
                                         u3d,                            &
                                         v3d,                            &
                                         w
+
       real,    dimension(ims:ime, jms:jme), intent(in) ::               &
                                         qfx,                            &
                                         hfx                            
@@ -291,31 +314,14 @@ contains
       integer  , dimension(its:ite) ::  slimsk
 
 
-      real     , dimension(its:ite, kts:kte+1) ::         &
-                                        prsi,           &
-                                        ghti,           &
+      real     , dimension(its:ite, kts:kte+1) ::                       &
+                                        prsi,                           &
+                                        ghti,                           &
                                           zi 
 
-      real     , dimension(its:ite, kts:kte) ::         &
+      real     , dimension(its:ite, kts:kte) ::                         &
                                         dot,                            &
-                                        prsl,                           &
-                                        q1,                             &
-                                        q2,                             &
-                                        q3,                             &
-                                        q1b,                            &
-                                        t1b,                            &
-                                        q11,                            &
-                                        q12,                            &
-                                        t1,                             &
-                                        u1,                             &
-                                        v1,                             &
-                                        zl,                             &
-                                        omg,                            &
-                                        ghtl                           
-
-      integer, dimension(its:ite) ::                                    &
-                                        kbot,                           &
-                                        ktop
+                                        zl
 
       integer ::                                                        &
                                         i,                              &
@@ -390,13 +396,9 @@ contains
       real     :: fliq,fice,ztc,zalf,tt
       real     :: ztpp1
       real     :: zew,zqs,zcor
-
 !
-!-----------------------------------------------------------------------
+!     set flag for a convection timestep
 !
-!***  check to see if this is a convection timestep
-!
-!-----------------------------------------------------------------------
       do j=jts,jte
          do i=its,ite
             cu_act_flag(i,j)=.true.
@@ -409,28 +411,28 @@ contains
       delt=dt*stepcu
       rdelt=1./delt
 
-!-------------  j loop (outer) --------------------------------------------------
+!  begin j loop
 
    do j=jts,jte
 
-! --------------- compute zi and zl -----------------------------------------
+!     compute height at full (zi) and half (zl) levels
+
       do i=its,ite
         zi(i,kts)=0.0
       enddo
-!
+ 
       do k=kts,kte
         do i=its,ite
           zi(i,k+1)=zi(i,k)+dz8w(i,k,j)
         enddo
       enddo
-!
+ 
       do k=kts,kte
         do i=its,ite
           zl(i,k)=0.5*(zi(i,k)+zi(i,k+1))
         enddo
       enddo
 
-! --------------- end compute zi and zl -------------------------------------
       do i=its,ite
         slimsk(i)=int(abs(xland(i,j)-2.))
       enddo
@@ -485,15 +487,7 @@ contains
         heatflux(i) = hfx(i,j)
       enddo
 !
-!########################################################################
-!     call tiecnvn(u1,v1,t1,q1,q2,q3,q1b,t1b,ghtl,ghti,omg,prsl,prsi,evap,heatflux,  &
-!                 rn,slimsk,im,kx,kx1,delt,dx2d)
-!     call tiecnvn(pu,pv,pt,pqv,pqc,pqi,pqvf,ptf,poz,pzz,pomg,pap,paph,pqhfl,phhfl,  &
-!                 zprecc,lndj,lq,km,km1,ztmst,dx2d)
-
-! port code from tiecnvn
-!
-!  masv flux diagnostics.
+!  initializing arrays
 !
       do i=its,ite
         zrain(i)=0.0
@@ -502,9 +496,7 @@ contains
         pssfc(i)=0.0
         pgeoh(i,kx1)=g*pzz(i,kx1)
       end do
-!
-!     convert model variables for mflux scheme
-!
+
       do k=kts,kte
         do i=its,ite
           pcte(i,k)=0.0
@@ -512,7 +504,9 @@ contains
           pvol(i,k)=0.0
         end do
       end do
-
+!
+!     convert model variables for cu scheme
+!
       do k=kts,kte
         do i=its,ite
           pq(i,k)=pqv(i,k)/(1.0+pqv(i,k))
@@ -529,23 +523,21 @@ contains
         end do
       end do
 !
-!-----------------------------------------------------------------------
-!*    2.     call 'cumastrn'(master-routine for cumulus parameterization)
+!     call 'cumastrn'(master-routine for cumulus parameterization)
 !
-      call cumastrn        &
-     &    (klon=im,  klev=kx,  klevp1=kx1,  klevm1=kx-1,  pten=pt, &
-     &     pqen=pq, puen=pu,  pven=pv, pverv=pomg, pqsen=pqsat,&
-     &     pqhfl=evap,  ztmst=delt,  pap=pap,  paph=paph,  pgeo=pgeo, &
-     &     ptte=ptf,  pqte=pqvf,  pvom=pvom,  pvol=pvol,  prsfc=prsfc,&
-     &     pssfc=pssfc,  ldcum=locum,                             &
-     &     ktype=ktype,  kcbot=icbot,  kctop=ictop,  ptu=ztu,  pqu=zqu,  &
-     &     plu=zlu,   plude=zlude,  pmfu=zmfu,  pmfd=zmfd,  prain=zrain,&
-     &     pcte=pcte,  phhfl=heatflux,  lndj=slimsk,  zgeoh=pgeoh,  dx=dx2d)
+      call cumastrn                                                            &
+     &    (klon=im,     klev=kx,        klevp1=kx1,  klevm1=kx-1, pten=pt,     &
+     &     pqen=pq,     puen=pu,        pven=pv,     pverv=pomg,  pqsen=pqsat, &
+     &     pqhfl=evap,  ztmst=delt,     pap=pap,     paph=paph,   pgeo=pgeo,   &
+     &     ptte=ptf,    pqte=pqvf,      pvom=pvom,   pvol=pvol,                &
+     &     prsfc=prsfc, pssfc=pssfc,    ldcum=locum,                           &
+     &     ktype=ktype, kcbot=icbot,    kctop=ictop, ptu=ztu,     pqu=zqu,     &
+     &     plu=zlu,     plude=zlude,    pmfu=zmfu,   pmfd=zmfd,   prain=zrain, &
+     &     pcte=pcte,   phhfl=heatflux, lndj=slimsk, zgeoh=pgeoh, dx=dx2d)
 !
-!     to include the cloud water and cloud ice detrained from convection
+!     compute cloud water and cloud ice detrained from convection
 !
       do k=kts,kte
-!     do j=1,lq
       do i=its,ite
       if(pcte(i,k).gt.0.) then
         fliq=foealfa(pt(i,k))
@@ -556,36 +548,40 @@ contains
       end do
       end do
 !
+!     compute temperature and water vapor mixing ratio after convection
+!
       do k=kts,kte
-!       do j=1,lq
         do i=its,ite
           pt(i,k)=pt(i,k)+(ptf(i,k)-ztt(i,k))*delt
           pq(i,k)=pq(i,k)+(pqvf(i,k)-zqq(i,k))*delt
           pqv(i,k)=pq(i,k)/(1.0-pq(i,k))
         end do
       end do
-
-!     do j=1,lq
+!
+!     compute surface rainfall
+!
       do i=its,ite
         zprecc(i)=amax1(0.0,(prsfc(i)+pssfc(i))*delt)
       end do
 
+      do i=its,ite
+         raincv(i,j)=zprecc(i)/stepcu
+         pratec(i,j)=zprecc(i)/(stepcu * dt)
+      enddo
+!
+!     compute u and v winds after convection
+!
       if (lmfdudv) then
         do k=kts,kte
-!         do j=1,lq
           do i=its,ite
             pu(i,k)=pu(i,k)+pvom(i,k)*delt
             pv(i,k)=pv(i,k)+pvol(i,k)*delt
           end do
         end do
       endif
-! end of tiecnvn code
-
-      do i=its,ite
-         raincv(i,j)=zprecc(i)/stepcu
-         pratec(i,j)=zprecc(i)/(stepcu * dt)
-      enddo
-
+!
+!     compute tendencies for model variables
+!
       pp = 0
       do k=kts,kte
         zz = kte-pp
@@ -625,7 +621,7 @@ contains
       endif
 
    enddo
-!  end of J loop
+!  end of j loop
 
    end subroutine cu_ntiedtke
 
@@ -703,132 +699,6 @@ contains
    endif
 
    end subroutine ntiedtkeinit
-
-!-----------------------------------------------------------------
-!          level 1 subroutine 'tiecnvn'
-!-----------------------------------------------------------------
-      subroutine tiecnvn(pu,pv,pt,pqv,pqc,pqi,pqvf,ptf,poz,pzz,pomg, &
-     &         pap,paph,evap,hfx,zprecc,lndj,lq,km,km1,dt,dx)
-!-----------------------------------------------------------------
-!  this is the interface between the model and the mass 
-!  flux convection module
-!-----------------------------------------------------------------
-      implicit none
-!
-      real pu(lq,km),   pv(lq,km),   pt(lq,km),   pqv(lq,km)
-      real poz(lq,km),  pomg(lq,km), evap(lq),    zprecc(lq)
-      real pzz(lq,km1)
-
-      real pum1(lq,km),    pvm1(lq,km),  ztt(lq,km),                &
-     &     ptte(lq,km),    pqte(lq,km),  pvom(lq,km),  pvol(lq,km), &
-     &     pverv(lq,km),   pgeo(lq,km),  pap(lq,km),   paph(lq,km1)
-      real pqhfl(lq),      zqq(lq,km),    &
-     &     prsfc(lq),      pssfc(lq),    pcte(lq,km), &
-     &     phhfl(lq),      hfx(lq),      pgeoh(lq,km1)
-      real ztp1(lq,km),    zqp1(lq,km),  ztu(lq,km),   zqu(lq,km),  &
-     &     zlu(lq,km),     zlude(lq,km), zmfu(lq,km),  zmfd(lq,km), &
-     &     zqsat(lq,km),   pqc(lq,km),   pqi(lq,km),   zrain(lq)
-      real pqvf(lq,km),    ptf(lq,km)
-      real dx(lq)
-
-      integer icbot(lq),   ictop(lq),     ktype(lq),   lndj(lq)
-      logical locum(lq)
-!
-      real ztmst,fliq,fice,ztc,zalf,tt
-      integer i,j,k,lq,km,km1
-      real dt,ztpp1
-      real zew,zqs,zcor
-!
-      ztmst=dt
-!
-!  masv flux diagnostics.
-!
-      do j=1,lq
-        zrain(j)=0.0
-        locum(j)=.false.
-        prsfc(j)=0.0
-        pssfc(j)=0.0
-        pqhfl(j)=evap(j)
-        phhfl(j)=hfx(j)
-        pgeoh(j,km1)=g*pzz(j,km1)
-      end do
-!
-!     convert model variables for mflux scheme
-!
-      do k=1,km
-        do j=1,lq
-          pcte(j,k)=0.0
-          pvom(j,k)=0.0
-          pvol(j,k)=0.0
-          ztp1(j,k)=pt(j,k)
-          zqp1(j,k)=pqv(j,k)/(1.0+pqv(j,k))
-          pum1(j,k)=pu(j,k)
-          pvm1(j,k)=pv(j,k)
-          pverv(j,k)=pomg(j,k)
-          pgeo(j,k)=g*poz(j,k)
-          pgeoh(j,k)=g*pzz(j,k)
-          tt=ztp1(j,k)
-          zew  = foeewm(tt)                                      
-          zqs  = zew/pap(j,k)                                      
-          zqs  = min(0.5,zqs)                                         
-          zcor = 1./(1.-vtmpc1*zqs)                                    
-          zqsat(j,k)=zqs*zcor      
-          pqte(j,k)=pqvf(j,k) 
-          zqq(j,k) =pqte(j,k)
-          ptte(j,k)=ptf(j,k)
-          ztt(j,k) =ptte(j,k)
-        end do
-      end do
-!
-!-----------------------------------------------------------------------
-!*    2.     call 'cumastrn'(master-routine for cumulus parameterization)
-!
-      call cumastrn        &
-     &    (lq,       km,       km1,      km-1,    ztp1, &
-     &     zqp1,     pum1,     pvm1,     pverv,   zqsat,&
-     &     pqhfl,    ztmst,    pap,      paph,    pgeo, &
-     &     ptte,     pqte,     pvom,     pvol,    prsfc,&
-     &     pssfc,    locum,                             &
-     &     ktype,    icbot,    ictop,    ztu,     zqu,  &
-     &     zlu,      zlude,    zmfu,     zmfd,    zrain,&
-     &     pcte,     phhfl,    lndj,     pgeoh,   dx)
-!
-!     to include the cloud water and cloud ice detrained from convection
-!
-      do k=1,km
-      do j=1,lq
-      if(pcte(j,k).gt.0.) then
-        fliq=foealfa(ztp1(j,k))
-        fice=1.0-fliq
-        pqc(j,k)=pqc(j,k)+fliq*pcte(j,k)*ztmst
-        pqi(j,k)=pqi(j,k)+fice*pcte(j,k)*ztmst
-      endif
-      end do
-      end do
-!
-      do k=1,km
-        do j=1,lq
-          pt(j,k)=  ztp1(j,k)+(ptte(j,k)-ztt(j,k))*ztmst
-          zqp1(j,k)=zqp1(j,k)+(pqte(j,k)-zqq(j,k))*ztmst
-          pqv(j,k)=zqp1(j,k)/(1.0-zqp1(j,k))
-        end do
-      end do
-
-      do j=1,lq
-        zprecc(j)=amax1(0.0,(prsfc(j)+pssfc(j))*ztmst)
-      end do
-
-      if (lmfdudv) then
-        do k=1,km
-          do j=1,lq
-            pu(j,k)=pu(j,k)+pvom(j,k)*ztmst
-            pv(j,k)=pv(j,k)+pvol(j,k)*ztmst
-          end do
-        end do
-      endif
-!
-      return
-      end subroutine tiecnvn
 
 !#############################################################
 !
