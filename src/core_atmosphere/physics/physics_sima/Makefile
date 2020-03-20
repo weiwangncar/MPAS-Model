@@ -6,12 +6,16 @@ dummy:
 	echo "****** compiling physics_sima ******"
 
 OBJS = \
-	bl_ysu.o
+	bl_ysu.o \
+	cu_ntiedtke_mpas.o \
+	cu_ntiedtke.o
 
 physics_sima: $(OBJS)
 	ar -ru ./../libphys.a $(OBJS)
 
 # DEPENDENCIES:
+cu_ntiedtke_mpas.o: \
+        cu_ntiedtke.o
 
 clean:
 	$(RM) *.f90 *.o *.mod

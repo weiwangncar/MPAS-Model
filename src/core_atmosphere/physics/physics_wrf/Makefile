@@ -67,6 +67,10 @@ module_ra_rrtmg_sw.o: \
 	module_ra_rrtmg_lw.o \
 	module_ra_rrtmg_vinterp.o
 
+module_cu_ntiedtke.o: \
+	../physics_sima/cu_ntiedtke.o \
+	../physics_sima/cu_ntiedtke_mpas.o
+
 module_sf_bep.o: \
 	module_sf_urban.o
 

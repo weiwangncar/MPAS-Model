@@ -578,7 +578,7 @@
              pratec    = pratec_p    , qfx         = qfx_p       ,                   &
              hfx       = hfx_p       , xland       = xland_p     ,                   &
              dx        = dx_p        , u3d         = u_p         ,                   &
-             v3d       = v_p         , w           = w_p         ,                   &
+             v3d       = v_p         , w3d         = w_p         ,                   &
              qv3d      = qv_p        , qc3d        = qc_p        ,                   &
              qi3d      = qi_p        , pi3d        = pi_p        ,                   &
              rho3d     = rho_p       , qvften      = rqvften_p   ,                   &
