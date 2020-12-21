@@ -146,7 +146,8 @@ module mpas_io
                        io_task_count,             &     ! num_iotasks
                        0,                         &     ! num_aggregator
                        io_task_stride,            &     ! stride
-                       PIO_rearr_box,             &     ! rearr
+!                      PIO_rearr_box,             &     ! rearr
+                       PIO_rearr_subset,          &
                        ioContext % pio_iosystem)           ! iosystem
   
       end if
