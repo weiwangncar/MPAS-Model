@@ -81,7 +81,7 @@
  real(kind=RKIND),dimension(:,:),pointer:: albedo12m
 
  real(kind=RKIND),dimension(:),pointer:: seaice,xice,xland
- real(kind=RKIND),dimension(:),pointer:: vegfra,shdmin,shdmax
+ real(kind=RKIND),dimension(:),pointer:: vegfra,shdmin,shdmax,snoalb
  real(kind=RKIND),dimension(:),pointer:: snow,snowc,snowh
  real(kind=RKIND),dimension(:,:),pointer:: greenfrac
 
@@ -109,6 +109,7 @@
  call mpas_pool_get_array(mesh, 'greenfrac', greenfrac)
  call mpas_pool_get_array(mesh, 'shdmin', shdmin)
  call mpas_pool_get_array(mesh, 'shdmax', shdmax)
+ call mpas_pool_get_array(mesh, 'snoalb', snoalb)
 
  call mpas_pool_get_array(fg, 'sfc_albbck', sfc_albbck)
  call mpas_pool_get_array(fg, 'vegfra', vegfra)
@@ -601,6 +602,8 @@
  real(kind=RKIND),dimension(:),pointer  :: skintemp,tmn,xland
  real(kind=RKIND),dimension(:,:),pointer:: tslb,smois,sh2o,smcrel
 
+ real(kind=RKIND),dimension(:),pointer  :: snoalb
+
  logical, pointer :: config_frac_seaice
  character(len=StrKIND),pointer:: config_landuse_data
  integer,pointer:: isice_lu
@@ -625,6 +628,7 @@
  call mpas_pool_get_array(mesh, 'landmask', landmask)
  call mpas_pool_get_array(mesh, 'lu_index', ivgtyp)
  call mpas_pool_get_array(mesh, 'soilcat_top', isltyp)
+ call mpas_pool_get_array(mesh, 'snoalb', snoalb)
 
  call mpas_pool_get_array(input, 'seaice', seaice)
  call mpas_pool_get_array(input, 'xice', xice)
@@ -661,8 +665,9 @@
 !prescribed threshold:
  num_seaice_changes = 0
  do iCell = 1, nCellsSolve
-    if(xice(iCell) .ge. xice_threshold .or. &
-      (landmask(iCell).eq.0 .and. skintemp(iCell).lt.xice_tsk_threshold)) then
+!   if(xice(iCell) .ge. xice_threshold .or. &
+!     (landmask(iCell).eq.0 .and. skintemp(iCell).lt.xice_tsk_threshold)) then
+    if(xice(iCell) .ge. xice_threshold ) then
 
        num_seaice_changes = num_seaice_changes + 1
        !... sea-ice points are converted to land points:
@@ -671,6 +676,7 @@
        isltyp(iCell) = 16
        vegfra(iCell) = 0._RKIND
        xland(iCell)  = 1._RKIND
+       snoalb(iCell) = 0.75
 
        !... recalculate the soil temperature and soil moisture:
        do iSoil = 1, nSoilLevels
