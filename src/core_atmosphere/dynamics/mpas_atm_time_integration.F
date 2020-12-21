@@ -1641,27 +1641,32 @@ module atm_time_integration
             call mpas_pool_get_dimension(state, 'nCellsSolve', nCellsSolve)
             call mpas_pool_get_dimension(state, 'nVertLevels', nVertLevels)
 
-            !NOTE: The calculation of the tendency due to horizontal and vertical advection for the water vapor mixing ratio
-            !requires that the subroutine atm_advance_scalars_mono was called on the third Runge Kutta step, so that a halo
-            !update for the scalars at time_levs(1) is applied. A halo update for the scalars at time_levs(2) is done above. 
-            if (config_monotonic) then
-               ! rqvdynten(:,:) = ( scalars_2(index_qv,:,:) - scalars_1(index_qv,:,:) ) / config_dt
+            ! The calculation of the tendency due to horizontal and vertical advection for the water vapor mixing ratio,
+            ! and the transformation of the theta_m tendency to a theta_tendency.
+            ! In the case of monotonic advection, the physics tendency for qv is already accounted for because
+            ! time level 1 includes it.
 
-               do iCell = 1, nCellsSolve
+            do iCell = 1, nCellsSolve
+
+              if (config_monotonic) then ! no physics tend in update
                  do k = 1, nVertLevels
-                   rqvdynten(k,iCell) = (   scalars_2(index_qv,k,iCell) - scalars_1(index_qv,k,iCell) ) / config_dt
-                 ! remove physics tendency that is in qv update
-                   !rqvdynten(k,iCell) = rqvdynten(k,iCell) - scalars_tend(index_qv,k,iCell)/rho_zz(k,iCell)
-                 ! fix theta advection tendency - convert from theta_m to theta
-                   fac_m = 1./(1. + 1.61*scalars_2(index_qv,k,iCell))
-                   theta_local = theta_m(k,iCell)*fac_m
-                   rthdynten(k,iCell) = fac_m*(rthdynten(k,iCell)-theta_local*1.61*rqvdynten(k,iCell))
+                    rqvdynten(k,iCell) = (   scalars_2(index_qv,k,iCell) - scalars_1(index_qv,k,iCell) ) / config_dt
                  end do
-               end do
+              else  ! physics tend in update, need to remove it
+                 do k = 1, nVertLevels  
+                    rqvdynten(k,iCell) = (   scalars_2(index_qv,k,iCell) - scalars_1(index_qv,k,iCell) ) / config_dt &
+                                                    - scalars_tend(index_qv,k,iCell)/rho_zz(k,iCell)
+                 end do
+              end if
 
-            else
-               rqvdynten(:,:) = 0._RKIND
-            end if
+              do k = 1, nVertLevels
+                fac_m = 1./(1. + 1.61*scalars_2(index_qv,k,iCell))
+                theta_local = theta_m(k,iCell)*fac_m
+                rthdynten(k,iCell) = fac_m*(rthdynten(k,iCell)-theta_local*1.61*rqvdynten(k,iCell))
+              end do
+
+            end do
+
          end if
 
          !simply set to zero negative mixing ratios of different water species (for now):
