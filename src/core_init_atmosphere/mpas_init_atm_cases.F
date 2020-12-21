@@ -2705,6 +2705,8 @@ module init_atm_cases
 
       character (len=StrKIND) :: errstring
 
+      logical, parameter :: linear_interp_to_w = .false.  ! .true. represents the MPAS default through V7.0
+
       call mpas_pool_get_config(configs, 'config_met_prefix', config_met_prefix)
       call mpas_pool_get_config(configs, 'config_start_time', config_start_time)
       call mpas_pool_get_config(configs, 'config_met_interp', config_met_interp)
@@ -3069,30 +3071,46 @@ module init_atm_cases
          rdzw(k) = 1./dzw(k)
          zu(k  ) = .5*(zw(k)+zw(k+1))
       end do
-      do k=2,nz1
-         dzu (k)  = .5*(dzw(k)+dzw(k-1))
-         rdzu(k)  =  1./dzu(k)
-         fzp (k)  = .5* dzw(k  )/dzu(k)
-         fzm (k)  = .5* dzw(k-1)/dzu(k)
-         rdzwp(k) = dzw(k-1)/(dzw(k  )*(dzw(k)+dzw(k-1)))
-         rdzwm(k) = dzw(k  )/(dzw(k-1)*(dzw(k)+dzw(k-1)))
-      end do
 
-!**********  how are we storing cf1, cf2 and cf3?
+      if( linear_interp_to_w ) then ! this has been the MPAS default from the beginning
+                                    ! for the interp coefficients fzm and fzp
+        do k=2,nz1
+           dzu (k)  = .5*(dzw(k)+dzw(k-1))
+           rdzu(k)  =  1./dzu(k)
+           fzp (k)  = .5* dzw(k  )/dzu(k)
+           fzm (k)  = .5* dzw(k-1)/dzu(k)
+           rdzwp(k) = dzw(k-1)/(dzw(k  )*(dzw(k)+dzw(k-1)))
+           rdzwm(k) = dzw(k  )/(dzw(k-1)*(dzw(k)+dzw(k-1)))
+        end do
 
-      COF1 = (2.*DZU(2)+DZU(3))/(DZU(2)+DZU(3))*DZW(1)/DZU(2) 
-      COF2 =     DZU(2)        /(DZU(2)+DZU(3))*DZW(1)/DZU(3) 
-      CF1  = FZP(2) + COF1
-      CF2  = FZM(2) - COF1 - COF2
-      CF3  = COF2       
+        COF1 = (2.*DZU(2)+DZU(3))/(DZU(2)+DZU(3))*DZW(1)/DZU(2)
+        COF2 =     DZU(2)        /(DZU(2)+DZU(3))*DZW(1)/DZU(3)
+        CF1  = FZP(2) + COF1
+        CF2  = FZM(2) - COF1 - COF2
+        CF3  = COF2
 
-!      d1  = .5*dzw(1)
-!      d2  = dzw(1)+.5*dzw(2)
-!      d3  = dzw(1)+dzw(2)+.5*dzw(3)
-!      cf1 = d2*d3*(d3-d2)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
-!      cf2 = d1*d3*(d1-d3)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
-!      cf3 = d1*d2*(d2-d1)/(d2*d3*(d3-d2)+d1*d3*(d1-d3)+d1*d2*(d2-d1))
+      else ! vertical integral over w cell
 
+        do k=2,nz1
+           dzu (k)  = .5*(dzw(k)+dzw(k-1))
+           rdzu(k)  =  1./dzu(k)
+           !fzp (k)  = .5* dzw(k  )/dzu(k)
+           !fzm (k)  = .5* dzw(k-1)/dzu(k)
+           fzm (k)  = .5* dzw(k  )/dzu(k)  ! we switch fzm and fzp from the default in this new configuration,
+           fzp (k)  = .5* dzw(k-1)/dzu(k)  ! and this represents an integral assuming piecewise constant cell values.
+           rdzwp(k) = dzw(k-1)/(dzw(k  )*(dzw(k)+dzw(k-1)))
+           rdzwm(k) = dzw(k  )/(dzw(k-1)*(dzw(k)+dzw(k-1)))
+        end do
+
+        COF1 = (2.*DZU(2)+DZU(3))/(DZU(2)+DZU(3))*DZW(1)/DZU(2)
+        COF2 =     DZU(2)        /(DZU(2)+DZU(3))*DZW(1)/DZU(3)
+        ! CF1  = FZP(2) + COF1
+        ! CF2  = FZM(2) - COF1 - COF2
+        CF1  = FZM(2) + COF1         ! we do not want to change the coefficients that extrapolate to the surface,
+        CF2  = FZP(2) - COF1 - COF2  ! cf1 and cf2, hence we need to swap fzm and fzp here.
+        CF3  = COF2
+
+      end if
 
       call mpas_log_write(' cf1, cf2, cf3 = ', realArgs=(/cf1,cf2,cf3/))
 
@@ -4724,7 +4742,7 @@ call mpas_log_write('Done with soil consistency check')
             t(k,iCell) = t(k,iCell) * (p0 / pressure(k,iCell)) ** (rgas / cp)
 
             ! RHO_ZZ
-            rho_zz(k,iCell) = pressure(k,iCell) / rgas / (p(k,iCell) * t(k,iCell))
+            rho_zz(k,iCell) = pressure(k,iCell) / rgas / (p(k,iCell) * t(k,iCell) * (1.0 + 0.608*scalars(index_qv,k,iCell)))
             rho_zz(k,iCell) = rho_zz(k,iCell) / (1.0 + scalars(index_qv,k,iCell))
          end do
       end do
