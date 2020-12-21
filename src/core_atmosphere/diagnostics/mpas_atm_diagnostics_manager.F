@@ -37,6 +37,7 @@ module mpas_atm_diagnostics_manager
         use convective_diagnostics, only : convective_diagnostics_setup
         use pv_diagnostics, only : pv_diagnostics_setup
         use soundings, only : soundings_setup
+        use ivt, only : ivt_setup
 
         implicit none
 
@@ -57,6 +58,7 @@ module mpas_atm_diagnostics_manager
         call convective_diagnostics_setup(structs, clock)
         call pv_diagnostics_setup(structs, clock)
         call soundings_setup(configs, structs, clock, dminfo)
+        call ivt_setup(structs, clock)
 
     end subroutine mpas_atm_diag_setup
 
@@ -102,6 +104,7 @@ module mpas_atm_diagnostics_manager
         use convective_diagnostics, only : convective_diagnostics_compute
         use pv_diagnostics, only : pv_diagnostics_compute
         use soundings, only : soundings_compute
+        use ivt, only : ivt_compute
 
         implicit none
 
@@ -111,6 +114,7 @@ module mpas_atm_diagnostics_manager
         call convective_diagnostics_compute()
         call pv_diagnostics_compute()
         call soundings_compute()
+        call ivt_compute()
 
     end subroutine mpas_atm_diag_compute
 

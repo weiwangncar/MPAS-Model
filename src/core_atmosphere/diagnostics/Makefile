@@ -9,6 +9,7 @@ DIAGNOSTIC_MODULES = \
 	convective_diagnostics.o \
 	pv_diagnostics.o \
 	soundings.o \
+	ivt.o
 
 isobaric_diagnostics.o: mpas_atm_diagnostics_utils.o
 
@@ -17,6 +18,8 @@ convective_diagnostics.o: mpas_atm_diagnostics_utils.o
 pv_diagnostics.o: mpas_atm_diagnostics_utils.o
 
 soundings.o:
+
+ivt.o:
 
 
 ################### Generally no need to modify below here ###################
