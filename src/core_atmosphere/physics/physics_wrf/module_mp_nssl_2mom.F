@@ -12702,7 +12702,7 @@ END SUBROUTINE nssl_2mom_driver
       real, parameter :: mfrag = 1.0e-10 ! assumed ice fragment mass for collisional splintering (Schuur & Rutledge 00b)
       double precision cautn(ngs), rh(ngs), nh(ngs)
       real ex1, ft, rhoinv(ngs)
-      double precision ec0(ngs)
+      real ec0(ngs)
       
       real ac1,bc, taus, c1,d1,e1,f1,p380,tmp,tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,temp3 ! , sstdy, super
       real :: flim
