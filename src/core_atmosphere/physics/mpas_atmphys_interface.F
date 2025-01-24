@@ -1019,6 +1019,7 @@
        call mpas_pool_get_array(diag_physics,'re_cloud',re_cloud)
        call mpas_pool_get_array(diag_physics,'re_ice'  ,re_ice  )
        call mpas_pool_get_array(diag_physics,'re_snow' ,re_snow )
+       call mpas_pool_get_array(diag_physics,'refl10cm',refl10cm)
 
        do j = jts,jte
        do k = kts,kte
@@ -1032,6 +1033,8 @@
           re_cloud(k,i) = recloud_p(i,k,j)
           re_ice(k,i)   = reice_p(i,k,j)
           re_snow(k,i)  = resnow_p(i,k,j)
+
+          refl10cm(k,i) = refl10cm_p(i,k,j)
        enddo
        enddo
        enddo
@@ -1040,7 +1043,6 @@
           case("mp_thompson","mp_thompson_aerosols")
              call mpas_pool_get_dimension(state,'index_ni',index_ni)
              call mpas_pool_get_dimension(state,'index_nr',index_nr)
-             call mpas_pool_get_array(diag_physics,'refl10cm',refl10cm)
              ni   => scalars(index_ni,:,:)
              nr   => scalars(index_nr,:,:)
 
@@ -1049,7 +1051,6 @@
              do i = its,ite
                 ni(k,i) = ni_p(i,k,j)
                 nr(k,i) = nr_p(i,k,j)
-                refl10cm(k,i) = refl10cm_p(i,k,j)
              enddo
              enddo
              enddo

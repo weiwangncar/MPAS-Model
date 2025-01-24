@@ -153,14 +153,15 @@
        if(.not.allocated(rainprod_p)) allocate(rainprod_p(ims:ime,kms:kme,jms:jme))
        if(.not.allocated(evapprod_p)) allocate(evapprod_p(ims:ime,kms:kme,jms:jme))
 
+       !3D radar reflectivity
+       if(.not.allocated(refl10cm_p)) allocate(refl10cm_p(ims:ime,kms:kme,jms:jme))
+
     microp2_select: select case(trim(microp_scheme))
        case("mp_thompson","mp_thompson_aerosols")
           if(.not.allocated(ntc_p)) allocate(ntc_p(ims:ime,jms:jme))
           if(.not.allocated(muc_p)) allocate(muc_p(ims:ime,jms:jme))
           if(.not.allocated(ni_p) ) allocate(ni_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(nr_p) ) allocate(nr_p(ims:ime,kms:kme,jms:jme))
-
-          if(.not.allocated(refl10cm_p)) allocate(refl10cm_p(ims:ime,kms:kme,jms:jme))
 
           microp3_select: select case(trim(microp_scheme))
              case("mp_thompson_aerosols")
@@ -188,8 +189,6 @@
 
           if(.not.allocated(volg_p)) allocate(volg_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(volh_p)) allocate(volh_p(ims:ime,kms:kme,jms:jme))
-
-          if(.not.allocated(refl10cm_p)) allocate(refl10cm_p(ims:ime,kms:kme,jms:jme))
 
             if(.not.allocated(zrw_p) ) allocate(zrw_p(ims:ime,kms:kme,jms:jme))
             if(.not.allocated(zgw_p) ) allocate(zgw_p(ims:ime,kms:kme,jms:jme))
@@ -263,14 +262,15 @@
        if(allocated(rainprod_p)) deallocate(rainprod_p)
        if(allocated(evapprod_p)) deallocate(evapprod_p)
 
+       ! 3D radar reflectivity
+       if(allocated(refl10cm_p)) deallocate(refl10cm_p)
+
     microp2_select: select case(trim(microp_scheme))
        case("mp_thompson","mp_thompson_aerosols")
           if(allocated(ntc_p)) deallocate(ntc_p)
           if(allocated(muc_p)) deallocate(muc_p)
           if(allocated(ni_p) ) deallocate(ni_p )
           if(allocated(nr_p) ) deallocate(nr_p )
-
-          if(allocated(refl10cm_p)) deallocate(refl10cm_p)
 
           microp3_select: select case(trim(microp_scheme))
              case("mp_thompson_aerosols")
@@ -296,8 +296,6 @@
 
           if(allocated(volg_p) ) deallocate(volg_p )
           if(allocated(volh_p) ) deallocate(volh_p )
-
-          if(allocated(refl10cm_p)) deallocate(refl10cm_p)
 
             if(allocated(zrw_p) ) deallocate(zrw_p)
             if(allocated(zgw_p) ) deallocate(zgw_p)
@@ -899,6 +897,7 @@
           kp = 1
           do k = kts,kte
              dBZ1d(k) = max(-35._RKIND,dBZ1d(k))
+             refl10cm_p(i,k,j) = dBZ1d(k)
              if(zp(k) .lt. 1000.) kp = k
           enddo
           refl10cm_max(i) = maxval(dBZ1d(:))
