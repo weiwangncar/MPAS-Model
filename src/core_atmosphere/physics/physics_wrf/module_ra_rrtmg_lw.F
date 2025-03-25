@@ -11671,25 +11671,25 @@ CONTAINS
 !--- set trace gas volume mixing ratios, 2005 values, IPCC (2007):
 !carbon dioxide (379 ppmv)
  real :: co2
- data co2 / 379.e-6 / 
+ data co2 / 426.e-6 /
 !methane (1774 ppbv)
  real :: ch4
- data ch4 / 1774.e-9 / 
+ data ch4 / 1951.e-9 /
 !nitrous oxide (319 ppbv)
  real :: n2o
- data n2o / 319.e-9 / 
+ data n2o / 335.e-9 /
 !cfc-11 (251 ppt)
  real :: cfc11
- data cfc11 / 0.251e-9 / 
+ data cfc11 / 0.207e-9 /
 !cfc-12 (538 ppt)
  real :: cfc12
- data cfc12 / 0.538e-9 / 
+ data cfc12 / 0.476e-9 /
 !cfc-22 (169 ppt)
  real :: cfc22
- data cfc22 / 0.169e-9 / 
+ data cfc22 / 0.169e-9 /
 !ccl4 (93 ppt)
  real :: ccl4
- data ccl4 / 0.093e-9 / 
+ data ccl4 / 0.093e-9 /
 
 !--- set oxygen volume mixing ratio (for o2mmr=0.23143):
  real :: o2
