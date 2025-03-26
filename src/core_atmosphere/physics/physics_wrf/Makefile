@@ -27,6 +27,7 @@ OBJS = \
 	module_mp_wsm6.o               \
 	mp_nssl.o                      \
 	module_mp_nssl_2mom.o          \
+	module_mp_tcwa2.o              \
 	module_ra_cam.o                \
 	module_ra_cam_support.o        \
 	module_ra_rrtmg_lw.o           \

@@ -580,6 +580,7 @@
  integer,pointer:: index_ni,index_nr,index_nc,index_ns,index_ng,index_nh,index_nccn
  integer,pointer:: index_volg,index_volh
  integer,pointer:: index_nifa,index_nwfa
+ real(kind=RKIND),dimension(:),pointer    :: xland    !for tcwa2
  real(kind=RKIND),dimension(:),pointer    :: nifa2d,nwfa2d,nt_c,mu_c
  real(kind=RKIND),dimension(:,:),pointer  :: zgrid,w
  real(kind=RKIND),dimension(:,:),pointer  :: zz,exner,pressure_b
@@ -589,8 +590,9 @@
  real(kind=RKIND),dimension(:,:),pointer  :: volg,volh,zrw,zgw,zhw
  real(kind=RKIND),dimension(:,:),pointer  :: rainprod,evapprod,refl10cm
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
+ real(kind=RKIND),dimension(:,:),pointer  :: DBZM,ZDR,KDP,LDR,RHV  !for tcwa2
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
- real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten
+ real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnsmpten,rngmpten,rnifampten,rnwfampten
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !local variables:
@@ -645,7 +647,7 @@
 
 !initialize cloud water species and aerosols as function of cloud microphysics scheme:
  mp_select: select case(trim(mp_scheme))
-    case("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m")
+    case("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m","mp_tcwa2")
        call mpas_pool_get_dimension(state,'index_qi',index_qi)
        call mpas_pool_get_dimension(state,'index_qs',index_qs)
        call mpas_pool_get_dimension(state,'index_qg',index_qg)
@@ -800,6 +802,44 @@
                enddo
              ENDIF
              
+          case("mp_tcwa2")
+             call mpas_pool_get_dimension(state,'index_nc',index_nc)
+             call mpas_pool_get_dimension(state,'index_nr',index_nr)
+             call mpas_pool_get_dimension(state,'index_ni',index_ni)
+             call mpas_pool_get_dimension(state,'index_ns',index_ns)
+             call mpas_pool_get_dimension(state,'index_ng',index_ng)
+             call mpas_pool_get_array(diag_physics,'DBZM' ,DBZM )
+             call mpas_pool_get_array(diag_physics,'ZDR' ,ZDR )
+             call mpas_pool_get_array(diag_physics,'KDP' ,KDP )
+             call mpas_pool_get_array(diag_physics,'LDR' ,LDR )
+             call mpas_pool_get_array(diag_physics,'RHV' ,RHV )
+             call mpas_pool_get_array(sfc_input,'xland' ,xland )
+             nc   => scalars(index_nc,:,:)
+             nr   => scalars(index_nr,:,:)
+             ni   => scalars(index_ni,:,:)
+             ns   => scalars(index_ns,:,:)
+             ng   => scalars(index_ng,:,:)
+             do j = jts,jte
+             do i = its,ite
+                xland_p(i,j) = xland(i)
+             enddo
+             enddo
+             do j = jts, jte
+             do k = kts, kte
+             do i = its, ite
+                nc_p(i,k,j) = nc(k,i)
+                nr_p(i,k,j) = nr(k,i)
+                ni_p(i,k,j) = ni(k,i)
+                ns_p(i,k,j) = ns(k,i)
+                ng_p(i,k,j) = ng(k,i)
+                DBZM_p(i,k,j) = DBZM(k,i)
+                ZDR_p(i,k,j) = ZDR(k,i)
+                KDP_p(i,k,j) = KDP(k,i)
+                LDR_p(i,k,j) = LDR(k,i)
+                RHV_p(i,k,j) = RHV(k,i)
+             enddo
+             enddo
+             enddo
 
         case default
        end select mp2_select
@@ -809,7 +849,7 @@
 
 !begin calculation of cloud microphysics tendencies:
  mp_tend_select: select case(trim(mp_scheme))
-    case("mp_thompson","mp_thompson_aerosols","mp_wsm6")
+    case("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_tcwa2")
        call mpas_pool_get_array(tend_physics,'rthmpten',rthmpten)
        call mpas_pool_get_array(tend_physics,'rqvmpten',rqvmpten)
        call mpas_pool_get_array(tend_physics,'rqcmpten',rqcmpten)
@@ -858,6 +898,22 @@
 
                 case default
              end select mp3_tend_select
+
+          case("mp_tcwa2")
+             call mpas_pool_get_array(tend_physics,'rncmpten',rncmpten)
+             call mpas_pool_get_array(tend_physics,'rnrmpten',rnrmpten)
+             call mpas_pool_get_array(tend_physics,'rnimpten',rnimpten)
+             call mpas_pool_get_array(tend_physics,'rnsmpten',rnsmpten)
+             call mpas_pool_get_array(tend_physics,'rngmpten',rngmpten)
+             do k = kts,kte
+             do i = its,ite
+                rncmpten(k,i) = nc(k,i)
+                rnrmpten(k,i) = nr(k,i)
+                rnimpten(k,i) = ni(k,i)
+                rnsmpten(k,i) = ns(k,i)
+                rngmpten(k,i) = ng(k,i)
+             enddo
+             enddo
 
           case default
        end select mp2_tend_select
@@ -909,7 +965,7 @@
  real(kind=RKIND),dimension(:,:),pointer  :: rainprod,evapprod,refl10cm
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
- real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten
+ real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnsmpten,rngmpten,rnifampten,rnwfampten
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !local variables:
@@ -1006,7 +1062,7 @@
 
 !update cloud water species and aerosols as functions of cloud microphysics schemes:
  mp_select: select case(trim(mp_scheme))
-    case("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m")
+    case("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m","mp_tcwa2")
        call mpas_pool_get_dimension(state,'index_qi',index_qi)
        call mpas_pool_get_dimension(state,'index_qs',index_qs)
        call mpas_pool_get_dimension(state,'index_qg',index_qg)
@@ -1155,6 +1211,39 @@
             enddo
           ENDIF
 
+         case("mp_tcwa2")
+             call mpas_pool_get_dimension(state,'index_nc',index_nc)
+             call mpas_pool_get_dimension(state,'index_nr',index_nr)
+             call mpas_pool_get_dimension(state,'index_ni',index_ni)
+             call mpas_pool_get_dimension(state,'index_ns',index_ns)
+             call mpas_pool_get_dimension(state,'index_ng',index_ng)
+             call mpas_pool_get_array(diag_physics,'DBZM' ,DBZM )
+             call mpas_pool_get_array(diag_physics,'ZDR' ,ZDR )
+             call mpas_pool_get_array(diag_physics,'KDP' ,KDP )
+             call mpas_pool_get_array(diag_physics,'LDR' ,LDR )
+             call mpas_pool_get_array(diag_physics,'RHV' ,RHV )
+             nc   => scalars(index_nc,:,:)
+             nr   => scalars(index_nr,:,:)
+             ni   => scalars(index_ni,:,:)
+             ns   => scalars(index_ns,:,:)
+             ng   => scalars(index_ng,:,:)
+             do j = jts, jte
+             do k = kts, kte
+             do i = its, ite
+                nc(k,i) = nc_p(i,k,j)
+                nr(k,i) = nr_p(i,k,j)
+                ni(k,i) = ni_p(i,k,j)
+                ns(k,i) = ns_p(i,k,j)
+                ng(k,i) = ng_p(i,k,j)
+                DBZM(k,i) = DBZM_p(i,k,j)
+                ZDR(k,i) = ZDR_p(i,k,j)
+                KDP(k,i) = KDP_p(i,k,j)
+                LDR(k,i) = LDR_p(i,k,j)
+                RHV(k,i) = RHV_p(i,k,j)
+             enddo
+             enddo
+             enddo
+
           case default
        end select mp2_select
 
@@ -1163,7 +1252,7 @@
 
 !end calculation of cloud microphysics tendencies:
  mp_tend_select: select case(trim(mp_scheme))
-    case("mp_thompson","mp_thompson_aerosols","mp_wsm6")
+    case("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_tcwa2")
        call mpas_pool_get_array(tend_physics,'rthmpten',rthmpten)
        call mpas_pool_get_array(tend_physics,'rqvmpten',rqvmpten)
        call mpas_pool_get_array(tend_physics,'rqcmpten',rqcmpten)
@@ -1212,6 +1301,22 @@
 
                 case default
              end select mp3_tend_select
+
+          case("mp_tcwa2")
+             call mpas_pool_get_array(tend_physics,'rncmpten',rncmpten)
+             call mpas_pool_get_array(tend_physics,'rnrmpten',rnrmpten)
+             call mpas_pool_get_array(tend_physics,'rnimpten',rnimpten)
+             call mpas_pool_get_array(tend_physics,'rnsmpten',rnsmpten)
+             call mpas_pool_get_array(tend_physics,'rngmpten',rngmpten)
+             do k = kts,kte
+             do i = its,ite
+                rncmpten(k,i) = (nc(k,i)-rncmpten(k,i))/dt_dyn
+                rnrmpten(k,i) = (nr(k,i)-rnrmpten(k,i))/dt_dyn
+                rnimpten(k,i) = (ni(k,i)-rnimpten(k,i))/dt_dyn
+                rnsmpten(k,i) = (ns(k,i)-rnsmpten(k,i))/dt_dyn
+                rngmpten(k,i) = (ng(k,i)-rngmpten(k,i))/dt_dyn
+             enddo
+             enddo
 
           case default
        end select mp2_tend_select

@@ -22,6 +22,7 @@
  use module_mp_thompson
  use module_mp_nssl_2mom, only : nssl_2mom_driver
  use mp_nssl, only: mp_nssl_init
+ use module_mp_tcwa2
  use module_mp_wsm6,only: wsm6
  use mp_wsm6,only: mp_wsm6_init,refl10cm_wsm6
 
@@ -131,7 +132,7 @@
  if(.not.allocated(rainncv_p)) allocate(rainncv_p(ims:ime,jms:jme))
 
  microp_select: select case(trim(microp_scheme))
-    case ("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m")
+    case ("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m","mp_tcwa2")
        !mass mixing ratios:
        if(.not.allocated(qi_p)) allocate(qi_p(ims:ime,kms:kme,jms:jme))
        if(.not.allocated(qs_p)) allocate(qs_p(ims:ime,kms:kme,jms:jme))
@@ -197,6 +198,22 @@
           if(.not.allocated(hailnc_p) ) allocate(hailnc_p(ims:ime,jms:jme) )
           if(.not.allocated(hailncv_p)) allocate(hailncv_p(ims:ime,jms:jme))
 
+       case("mp_tcwa2")
+          if(.not.allocated(nc_p) ) allocate(nc_p(ims:ime,kms:kme,jms:jme))
+          if(.not.allocated(nr_p) ) allocate(nr_p(ims:ime,kms:kme,jms:jme))
+          if(.not.allocated(ni_p) ) allocate(ni_p(ims:ime,kms:kme,jms:jme))
+          if(.not.allocated(ns_p) ) allocate(ns_p(ims:ime,kms:kme,jms:jme))
+          if(.not.allocated(ng_p) ) allocate(ng_p(ims:ime,kms:kme,jms:jme))
+
+          !height above sea level (terrain height) and land-ocean mask
+          if(.not.allocated(xland_p)) allocate(xland_p(ims:ime,jms:jme))
+
+          if(.not.allocated(DBZM_p)) allocate(DBZM_p(ims:ime,kms:kme,jms:jme))
+          if(.not.allocated(ZDR_p)) allocate(ZDR_p(ims:ime,kms:kme,jms:jme))
+          if(.not.allocated(KDP_p)) allocate(KDP_p(ims:ime,kms:kme,jms:jme))
+          if(.not.allocated(LDR_p)) allocate(LDR_p(ims:ime,kms:kme,jms:jme))
+          if(.not.allocated(RHV_p)) allocate(RHV_p(ims:ime,kms:kme,jms:jme))
+
        case default
     end select microp2_select
 
@@ -240,7 +257,7 @@
  if(allocated(rainncv_p)) deallocate(rainncv_p)
 
  microp_select: select case(trim(microp_scheme))
-    case ("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m")
+    case ("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m","mp_tcwa2")
        !mass mixing ratios:
        if(allocated(qi_p)) deallocate(qi_p)
        if(allocated(qs_p)) deallocate(qs_p)
@@ -303,6 +320,22 @@
 
           if(allocated(hailnc_p)  ) deallocate(hailnc_p  )
           if(allocated(hailncv_p) ) deallocate(hailncv_p )
+
+       case("mp_tcwa2")
+          if(allocated(nc_p) ) deallocate(nc_p )
+          if(allocated(nr_p) ) deallocate(nr_p )
+          if(allocated(ni_p) ) deallocate(ni_p )
+          if(allocated(ns_p) ) deallocate(ns_p )
+          if(allocated(ng_p) ) deallocate(ng_p )
+
+          !height above sea level (terrain height) and land-ocean mask
+          if(allocated(xland_p)) deallocate(xland_p)
+
+          if(allocated(DBZM_p))  deallocate(DBZM_p)
+          if(allocated(ZDR_p))  deallocate(ZDR_p)
+          if(allocated(KDP_p))  deallocate(KDP_p)
+          if(allocated(LDR_p))  deallocate(LDR_p)
+          if(allocated(RHV_p))  deallocate(RHV_p)
 
        case default
     end select microp2_select
@@ -579,6 +612,21 @@
 
        call mpas_timer_stop('NSSL2M')
 
+    case ("mp_tcwa2")
+       call mpas_timer_start('mp_tcwa2')
+       call mp_tcwa2(TH = th_p, P = pres_p, DZ = dz_p, W = w_p, PII = pi_p, DT_MP = dt_microp,&
+                     XLAND = xland_p, QV = qv_p, QC = qc_p, QR = qr_p, QI = qi_p, QS = qs_p,  &
+                     QG = qg_p, NC = nc_p, NR = nr_p, NI = ni_p, NS = ns_p, NG = ng_p,        &
+                     SR = sr_p, RAINNC = rainnc_p, RAINNCV = rainncv_p, SNOWNC = snownc_p,    &
+                     SNOWNCV = snowncv_p, GRAPNC = graupelnc_p, GRAPNCV = graupelncv_p,       &
+                     DBZM = DBZM_p, ZDR = ZDR_p, KDP = KDP_p, LDR = LDR_p, RHV = RHV_p,       &
+                     re_cloud = recloud_p, re_ice = reice_p, re_snow = resnow_p,              &
+                     has_reqc = has_reqc, has_reqi = has_reqi, has_reqs = has_reqs,           &
+                     IDS = ids, IDE = ide, JDS = jds, JDE = jde, KDS = kds, KDE = kde,        &
+                     IMS = ims, IME = ime, JMS = jms, JME = jme, KMS = kms, KME = kme,        &
+                     ITS = its, ITE = ite, JTS = jts, JTE = jte, KTS = kts, KTE = kte)
+       call mpas_timer_stop('mp_tcwa2')
+
     case default
  end select microp_select
 
@@ -589,6 +637,7 @@
     if(trim(microp_scheme) == "mp_wsm6"              .or. &
        trim(microp_scheme) == "mp_thompson"          .or. &
        trim(microp_scheme) == "mp_thompson_aerosols" .or. &
+       trim(microp_scheme) == "mp_tcwa2"             .or. &
        trim(microp_scheme) == "mp_nssl2m"   ) then
        call compute_radar_reflectivity(configs,diag_physics,its,ite)
     else
@@ -646,6 +695,11 @@
  call mpas_pool_get_array(diag_physics,'rainncv'   ,rainncv   )
  call mpas_pool_get_array(diag_physics,'snowncv'   ,snowncv   )
  call mpas_pool_get_array(diag_physics,'sr'        ,sr        )
+ call mpas_pool_get_array(diag_physics,'DBZM' ,DBZM )
+ call mpas_pool_get_array(diag_physics,'ZDR' ,ZDR )
+ call mpas_pool_get_array(diag_physics,'KDP' ,KDP )
+ call mpas_pool_get_array(diag_physics,'LDR' ,LDR )
+ call mpas_pool_get_array(diag_physics,'RHV' ,RHV )
 
  IF ( microp_scheme == "mp_nssl2m" ) THEN
  call mpas_pool_get_array(diag_physics,'hailncv',hailncv)
@@ -665,7 +719,7 @@
 
 !variables specific to different cloud microphysics schemes:
  microp_select: select case(trim(microp_scheme))
-    case ("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m")
+    case ("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m","mp_tcwa2")
        do j = jts, jte
        do i = its, ite
           snowncv_p(i,j)    = 0._RKIND
@@ -693,6 +747,32 @@
           hailncv(i) = 0._RKIND
        enddo
        ENDIF
+
+    microp2_select: select case(microp_scheme)
+       case("mp_tcwa2")
+          do i = its, ite
+          do k = kts, kte
+             DBZM(k,i) = -99.
+             ZDR(k,i) = 0._RKIND
+             KDP(k,i) = 0._RKIND
+             LDR(k,i) = -99.
+             RHV(k,i) = 1.
+          enddo
+          enddo
+          do j = jts, jte
+          do k = kts, kte
+          do i = its, ite
+             DBZM_p(i,k,j) = -99.
+             ZDR_p(i,k,j) = 0._RKIND
+             KDP_p(i,k,j) = 0._RKIND
+             LDR_p(i,k,j) = -99.
+             RHV_p(i,k,j) = 1.
+          enddo
+          enddo
+          enddo
+
+       case default
+    end select microp2_select
 
     case default
  end select microp_select
@@ -774,7 +854,7 @@
 
 !variables specific to different cloud microphysics schemes:
  microp_select: select case(trim(microp_scheme))
-    case ("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m")
+    case ("mp_thompson","mp_thompson_aerosols","mp_wsm6","mp_nssl2m","mp_tcwa2")
        do j = jts,jte
        do i = its,ite
           !time-step precipitation:
@@ -970,6 +1050,53 @@
        if(allocated(nr1d) ) deallocate(nr1d )
        if(allocated(dBz1d)) deallocate(dBZ1d)
        if(allocated(zp)   ) deallocate(zp   )
+
+    case ("mp_tcwa2")
+       if(.not.allocated(qc1d)  ) allocate(qc1d(kts:kte)  )
+       if(.not.allocated(qr1d)  ) allocate(qr1d(kts:kte)  )
+       if(.not.allocated(qs1d)  ) allocate(qs1d(kts:kte)  )
+       if(.not.allocated(qg1d)  ) allocate(qg1d(kts:kte)  )
+       if(.not.allocated(t1d)   ) allocate(t1d(kts:kte)   )  !tk1d
+       if(.not.allocated(rho1d) ) allocate(rho1d(kts:kte) )
+       if(.not.allocated(dBz1d) ) allocate(dBZ1d(kts:kte) )
+       if(.not.allocated(zp)   )  allocate(zp(kts:kte)    )
+
+       do j = jts,jte
+       do i = its,ite
+          do k = kts,kte
+             qc1d(k)  = qc_p(i,k,j)
+             qr1d(k)  = qr_p(i,k,j)
+             qs1d(k)  = qs_p(i,k,j)
+             qg1d(k)  = qg_p(i,k,j)
+             t1d(k) = th_p(i,k,j) * pi_p(i,k,j)
+             rho1d(k)  = rho_p(i,k,j)
+             dBZ1d(k) = -35._RKIND
+             zp(k) = z_p(i,k,j) - z_p(i,1,j)+0.5*dz_p(i,1,j) ! height AGL
+          enddo
+
+          call refl10cm_tcwa(qc1d,qr1d,qs1d,qg1d,t1d,rho1d,dBZ1d,kts,kte)
+
+          kp = 1
+          do k = kts,kte
+             dBZ1d(k) = max(-35._RKIND,dBZ1d(k))
+             if(zp(k) .lt. 1000.) kp = k
+          enddo
+          refl10cm_max(i) = maxval(dBZ1d(:))
+          w1 = (zp(kp+1)-1000.)/(zp(kp+1)-zp(kp))
+          w2 = 1.0 - w1
+          refl10cm_1km(i) = w1*dBZ1d(kp) + w2*dBZ1d(kp+1)
+          refl10cm_1km_max(i) = max(refl10cm_1km_max(i),refl10cm_1km(i))
+       enddo
+       enddo
+
+       if(allocated(qc1d)  ) deallocate(qc1d  )
+       if(allocated(qr1d)  ) deallocate(qr1d  )
+       if(allocated(qs1d)  ) deallocate(qs1d  )
+       if(allocated(qg1d)  ) deallocate(qg1d  )
+       if(allocated(t1d)   ) deallocate(t1d   )
+       if(allocated(rho1d) ) deallocate(rho1d )
+       if(allocated(dBz1d) ) deallocate(dBZ1d )
+       if(allocated(zp)    ) deallocate(zp    )
 
     case default
  end select microp_select

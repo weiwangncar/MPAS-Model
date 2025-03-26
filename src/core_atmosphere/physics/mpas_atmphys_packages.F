@@ -39,7 +39,7 @@
  character(len=StrKIND),pointer:: config_convection_scheme
  character(len=StrKIND),pointer:: config_pbl_scheme
  character(len=StrKIND),pointer:: config_lsm_scheme
- logical,pointer:: mp_kessler_in,mp_thompson_in,mp_thompson_aers_in,mp_wsm6_in,mp_nssl2m_in,nssl3m_in,nssl_hail_in,nssl3m_hail_in,nssl_ccn_in
+ logical,pointer:: mp_kessler_in,mp_thompson_in,mp_thompson_aers_in,mp_wsm6_in,mp_nssl2m_in,nssl3m_in,nssl_hail_in,nssl3m_hail_in,nssl_ccn_in,mp_tcwa2_in
  logical,pointer:: cu_grell_freitas_in,cu_kain_fritsch_in,cu_ntiedtke_in
  logical,pointer:: bl_mynn_in,bl_ysu_in
  logical,pointer:: sf_noahmp_in
@@ -90,10 +90,14 @@
  nullify(nssl_ccn_in)
  call mpas_pool_get_package(packages,'nssl_ccn_inActive',nssl_ccn_in)
 
+ nullify(mp_tcwa2_in)
+ call mpas_pool_get_package(packages,'mp_tcwa2_inActive',mp_tcwa2_in)
+
  if(.not.associated(mp_kessler_in)       .or. &
     .not.associated(mp_thompson_in)      .or. &
     .not.associated(mp_thompson_aers_in) .or. &
     .not.associated(mp_nssl2m_in) .or. &
+    .not.associated(mp_tcwa2_in) .or. &
     .not.associated(mp_wsm6_in)) then
     call mpas_log_write('====================================================================================',messageType=MPAS_LOG_ERR)
     call mpas_log_write('* Error while setting up packages for cloud microphysics options in atmosphere core.',messageType=MPAS_LOG_ERR)
@@ -111,6 +115,7 @@
  nssl_hail_in        = .false.
  nssl3m_hail_in      = .false.
  nssl_ccn_in         = .false.
+ mp_tcwa2_in         = .false.
 
  if(config_microp_scheme == 'mp_kessler') then
     mp_kessler_in = .true.
@@ -138,6 +143,8 @@
         nssl3m_hail_in = .true.
       endif
     endif
+ elseif(config_microp_scheme == 'mp_tcwa2') then
+    mp_tcwa2_in = .true.
  endif
 
  call mpas_log_write('    mp_kessler_in           = $l', logicArgs=(/mp_kessler_in/))
@@ -149,6 +156,7 @@
  call mpas_log_write('    nssl_ccn_in             = $l', logicArgs=(/nssl_ccn_in/))
  call mpas_log_write('    nssl3m_in               = $l', logicArgs=(/nssl3m_in/))
  call mpas_log_write('    nssl3m_hail_in          = $l', logicArgs=(/nssl3m_hail_in/))
+ call mpas_log_write('    mp_tcwa2                = $l', logicArgs=(/mp_tcwa2_in/))
 
 !--- initialization of all packages for parameterizations of convection:
 
