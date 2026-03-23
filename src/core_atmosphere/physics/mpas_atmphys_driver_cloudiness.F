@@ -61,8 +61,16 @@
 
 
 !=================================================================================================================
- subroutine allocate_cloudiness
+ subroutine allocate_cloudiness(configs)
 !=================================================================================================================
+
+!input arguments:
+ type(mpas_pool_type),intent(in):: configs
+
+!local pointers:
+ character(len=StrKIND),pointer:: pbl_scheme
+
+ call mpas_pool_get_config(configs,'config_pbl_scheme',pbl_scheme)
 
  if(.not.allocated(dx_p)     ) allocate(dx_p(ims:ime,jms:jme)             ) 
  if(.not.allocated(xland_p)  ) allocate(xland_p(ims:ime,jms:jme)          )
@@ -72,11 +80,25 @@
  if(.not.allocated(qirad_p)  ) allocate(qirad_p(ims:ime,kms:kme,jms:jme)  )
  if(.not.allocated(qsrad_p)  ) allocate(qsrad_p(ims:ime,kms:kme,jms:jme)  )
 
+ if(pbl_scheme .eq. 'bl_mynn') then
+    if(.not.allocated(qcbl_p)    ) allocate(qcbl_p(ims:ime,kms:kme,jms:jme)  )
+    if(.not.allocated(qibl_p)    ) allocate(qibl_p(ims:ime,kms:kme,jms:jme)  )
+    if(.not.allocated(cldfrabl_p)) allocate(cldfrabl_p(ims:ime,kms:kme,jms:jme)  )
+ end if
+
  end subroutine allocate_cloudiness
 
 !=================================================================================================================
- subroutine deallocate_cloudiness
+ subroutine deallocate_cloudiness(configs)
 !=================================================================================================================
+
+!input arguments:
+ type(mpas_pool_type),intent(in):: configs
+
+!local pointers:
+ character(len=StrKIND),pointer:: pbl_scheme
+
+ call mpas_pool_get_config(configs,'config_pbl_scheme',pbl_scheme)
 
  if(allocated(dx_p)     ) deallocate(dx_p     )
  if(allocated(xland_p)  ) deallocate(xland_p  )
@@ -85,6 +107,12 @@
  if(allocated(qcrad_p)  ) deallocate(qcrad_p  )
  if(allocated(qirad_p)  ) deallocate(qirad_p  )
  if(allocated(qsrad_p)  ) deallocate(qsrad_p  )
+
+ if(pbl_scheme .eq. 'bl_mynn') then
+    if(allocated(qcbl_p)    ) deallocate(qcbl_p    )
+    if(allocated(qibl_p)    ) deallocate(qibl_p    )
+    if(allocated(cldfrabl_p)) deallocate(cldfrabl_p)
+ end if
 
  end subroutine deallocate_cloudiness
 
@@ -109,15 +137,24 @@
  real(kind=RKIND),pointer:: len_disp
  real(kind=RKIND),dimension(:),pointer:: areaCell,meshDensity
  real(kind=RKIND),dimension(:),pointer:: xland
+ character(len=StrKIND),pointer:: pbl_scheme
+ real(kind=RKIND),dimension(:,:),pointer:: cldfrac_bl,qc_bl,qi_bl
 
 !-----------------------------------------------------------------------------------------------------------------
 
+ call mpas_pool_get_config(configs,'config_pbl_scheme',pbl_scheme)
  call mpas_pool_get_config(configs,'config_len_disp',len_disp)
 
  call mpas_pool_get_array(mesh,'areaCell'   ,areaCell   )
  call mpas_pool_get_array(mesh,'meshDensity',meshDensity)
 
  call mpas_pool_get_array(sfc_input,'xland',xland)
+
+ if(pbl_scheme .eq. 'bl_mynn') then
+ call mpas_pool_get_array(diag_physics,'qc_bl',qc_bl)
+ call mpas_pool_get_array(diag_physics,'qi_bl',qi_bl)
+ call mpas_pool_get_array(diag_physics,'cldfrac_bl',cldfrac_bl)
+ endif
 
  do j = jts,jte
     do i = its,ite
@@ -138,6 +175,15 @@
        cldfrac_p(i,k,j) = 0._RKIND
     enddo
     enddo
+    if(pbl_scheme .eq. 'bl_mynn') then
+       do k = kts,kte
+       do i = its,ite
+       qcbl_p(i,k,j)   = qc_bl(k,i)
+       qibl_p(i,k,j)   = qi_bl(k,i)
+       cldfrabl_p(i,k,j) = cldfrac_bl(k,i)
+       enddo
+       enddo
+    endif
  enddo
 
  end subroutine cloudiness_from_MPAS
@@ -186,7 +232,7 @@
  type(mpas_pool_type),intent(inout):: diag_physics
 
 !local variables and pointers:
- character(len=StrKIND),pointer:: radt_cld_scheme
+ character(len=StrKIND),pointer:: radt_cld_scheme,pbl_scheme
 
  integer:: i,j,k
 
@@ -195,6 +241,7 @@
 !call mpas_log_write('--- enter subroutine driver_cloudiness:')
 
  call mpas_pool_get_config(configs,'config_radt_cld_scheme',radt_cld_scheme)
+ call mpas_pool_get_config(configs,'config_pbl_scheme',pbl_scheme)
 
 !copy MPAS arrays to local arrays:
  call cloudiness_from_MPAS(configs,mesh,diag_physics,sfc_input,its,ite)
@@ -209,6 +256,31 @@
       call mpas_timer_start('calc_cldfraction')
       call calc_cldfraction(cldfrac_p,t_p,pres_p,qvrad_p,qcrad_p,qirad_p,qs_p,its,ite)
       call mpas_timer_stop('calc_cldfraction')
+
+    case("cld_fraction_mynn")
+
+      if(pbl_scheme .eq. 'bl_mynn') then
+!        call mpas_log_write('')
+!        call mpas_log_write('--- enter cld_fraction_mynn:')
+!        call mpas_log_write("Loop indices are $i,$i,$i", intArgs=(/its,jts,kts/))
+       do j = jts,jte
+       do k = kts,kte
+       do i = its,ite
+       if(cldfrabl_p(i,k,j) .gt. 0.001) then
+          cldfrac_p(i,k,j) = cldfrabl_p(i,k,j)
+       else
+          cldfrac_p(i,k,j) = 0._RKIND
+       endif
+       if(qcrad_p(i,k,j).lt.1.e-6 .and. cldfrac_p(i,k,j).gt.1.e-3) then
+          qcrad_p(i,k,j)   = qcrad_p(i,k,j)+qcbl_p(i,k,j)
+       endif
+       if(qirad_p(i,k,j).lt.1.e-9 .and. cldfrac_p(i,k,j).gt.1.e-3) then
+          qirad_p(i,k,j)   = qirad_p(i,k,j)+qibl_p(i,k,j)
+       endif
+       enddo
+       enddo
+       enddo
+      endif
 
     case("cld_fraction_thompson")
       call mpas_timer_start('cal_cldfra3')

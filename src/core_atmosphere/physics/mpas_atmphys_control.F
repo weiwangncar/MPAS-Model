@@ -247,6 +247,7 @@
  if(.not. (config_radt_cld_scheme .eq. 'off'           .or. &
            config_radt_cld_scheme .eq. 'cld_incidence' .or. &
            config_radt_cld_scheme .eq. 'cld_fraction'  .or. &
+           config_radt_cld_scheme .eq. 'cld_fraction_mynn'  .or. &
            config_radt_cld_scheme .eq. 'cld_fraction_thompson')) then
 
     write(mpas_err_message,'(A,A20)') 'illegal value for calculation of cloud fraction: ', &
